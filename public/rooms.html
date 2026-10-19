@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Siege of Fate — ห้องออนไลน์</title>
+<style>
+  :root { --bg:#0f0c0a; --panel:#1a1511; --line:#3a2d20; --gold:#f2c66d; --text:#e9e0d2; --dim:#9a8f80; --ok:#7ddc8a; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.6 system-ui, "Noto Sans Thai", sans-serif; }
+  main { max-width: 860px; margin: 0 auto; padding: 28px 16px 60px; }
+  h1 { color:var(--gold); font-size: 26px; margin: 0 0 4px; letter-spacing: .5px; }
+  .sub { color:var(--dim); margin:0 0 22px; }
+  section { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:16px 18px; margin-bottom:16px; }
+  h2 { font-size:17px; margin:0 0 10px; color:var(--gold); }
+  table { width:100%; border-collapse:collapse; }
+  th, td { text-align:left; padding:7px 6px; border-bottom:1px solid var(--line); }
+  th { color:var(--dim); font-weight:500; font-size:13px; }
+  code { background:#000; padding:1px 6px; border-radius:4px; color:var(--gold); }
+  .empty { color:var(--dim); padding:10px 0; }
+  .tag { font-size:12px; color:var(--ok); }
+  ol { margin:0; padding-left:20px; }
+  button { background:#3a2a16; color:var(--gold); border:1px solid #6a5130; border-radius:6px; padding:5px 12px; cursor:pointer; }
+  @media (max-width: 560px) { .hide-sm { display:none; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Siege of Fate — ห้องออนไลน์</h1>
+  <p class="sub">รายชื่อห้องที่เปิดอยู่ตอนนี้ (อัปเดตทุก 15 วินาที) — เข้าร่วมจากในเกม: มัลติเพลเยอร์ &gt; ค้นหาห้องออนไลน์</p>
+  <section>
+    <h2>ห้องที่เปิดอยู่ <button id="r">รีเฟรช</button></h2>
+    <table><thead><tr><th>ห้อง</th><th class="hide-sm">Host</th><th>ผู้เล่น</th><th>ที่อยู่</th><th class="hide-sm">เวอร์ชัน</th></tr></thead>
+    <tbody id="rooms"><tr><td colspan="5" class="empty">กำลังโหลด…</td></tr></tbody></table>
+    <p class="sub" id="st"></p>
+  </section>
+  <section>
+    <h2>วิธีเล่นออนไลน์</h2>
+    <ol>
+      <li>เปิดเกม &gt; <b>มัลติเพลเยอร์</b> &gt; ล็อกอิน/สมัคร &gt; เลือกตัวละคร</li>
+      <li><b>สร้างห้อง:</b> ตั้งชื่อห้อง ติ๊ก “แสดงในรายชื่อห้องออนไลน์” แล้วกดสร้างห้อง — เกมเปิดพอร์ต UDP 24680 บนเราเตอร์ให้อัตโนมัติ (UPnP)</li>
+      <li><b>เข้าร่วม:</b> กด “ค้นหาห้องออนไลน์” เลือกห้อง แล้วกดเข้าร่วม (หรือพิมพ์ IP:พอร์ต เอง)</li>
+      <li>ถ้าเพื่อนเข้าไม่ได้: เราเตอร์ไม่รองรับ UPnP / เน็ตมือถือ (CGNAT) — ให้เปิดพอร์ต UDP 24680 เอง หรือรันเซิร์ฟเวอร์เฉพาะบน VPS: <code>godot --headless --path . -- --server --lobby</code></li>
+    </ol>
+  </section>
+</main>
+<script>
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+async function load() {
+  const tb = document.getElementById("rooms");
+  try {
+    const r = await (await fetch("/api/rooms", { cache: "no-store" })).json();
+    document.getElementById("st").textContent = "ที่เก็บ: " + r.storage + (r.storage === "memory" ? " (ยังไม่ได้เชื่อม Redis — รายชื่ออาจไม่ครบ ดู README)" : "");
+    tb.innerHTML = r.rooms.length ? r.rooms.map((x) =>
+      `<tr><td>${esc(x.name)} ${x.dedicated ? '<span class="tag">24 ชม.</span>' : ""}</td><td class="hide-sm">${esc(x.host)}</td><td>${x.players}/${x.max}</td><td><code>${esc(x.ip)}:${x.port}</code></td><td class="hide-sm">${esc(x.proto)}</td></tr>`).join("")
+      : '<tr><td colspan="5" class="empty">ยังไม่มีห้องเปิด — สร้างห้องจากในเกมได้เลย</td></tr>';
+  } catch (e) { tb.innerHTML = '<tr><td colspan="5" class="empty">โหลดไม่ได้: ' + esc(e) + "</td></tr>"; }
+}
+document.getElementById("r").onclick = load;
+load(); setInterval(load, 15000);
+</script>
+</body>
+</html>
