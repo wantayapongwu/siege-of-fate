@@ -206,6 +206,7 @@
     <button data-p="players">ผู้เล่น <span class="badge" id="b-players">0</span></button>
     <button data-p="online">ออนไลน์ <span class="badge ok" id="b-online">0</span></button>
     <button data-p="economy">เศรษฐกิจ & เควส</button>
+    <button data-p="pay">เติมเงิน <span class="badge" id="b-pay">0</span></button>
     <button data-p="dups">ไอเทมซ้ำ <span class="badge" id="b-dups">0</span></button>
   </nav>
 
@@ -296,6 +297,28 @@
       </div>
     </section>
 
+    <!-- ---------- เติมเงิน (v41) ---------- -->
+    <section class="page" id="p-pay">
+      <div class="kpis" id="paykpis"></div>
+      <div class="card box">
+        <h2>💵 ยอดขายรายวัน (30 วัน)</h2>
+        <p class="sub">ร้านคอสตูมเงินจริง — ชุดละ 1.00 USD · เวลาไทย · นับเฉพาะรายการที่ Stripe ยืนยันว่าจ่ายแล้ว</p>
+        <div id="c-pay"></div>
+      </div>
+      <div class="grid2">
+        <div class="card box"><h2>👑 ผู้ใช้จ่ายสูงสุด</h2><p class="sub">รวมยอดที่จ่ายสำเร็จต่อบัญชี</p><div id="pay-top"></div></div>
+        <div class="card box"><h2>👕 ขายดีรายชุด</h2><p class="sub">จำนวนครั้งที่ขายได้ต่อคอสตูม</p><div id="pay-sku"></div></div>
+      </div>
+      <div class="card box">
+        <h2>🧾 รายการล่าสุด</h2>
+        <p class="sub">100 รายการล่าสุด (รวมที่ยังไม่จ่าย/ยกเลิก) — ไม่มีข้อมูลบัตรใดๆ เก็บไว้ในระบบเรา ทั้งหมดอยู่กับ Stripe</p>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th>เวลา</th><th>บัญชี</th><th>คอสตูม</th><th class="r">ยอด</th><th>สถานะ</th><th class="hide-sm">Stripe session</th></tr></thead>
+          <tbody id="paybody"></tbody>
+        </table></div>
+      </div>
+    </section>
+
     <!-- ---------- ไอเทมซ้ำ ---------- -->
     <section class="page" id="p-dups">
       <div class="card box">
@@ -329,7 +352,7 @@
   };
   let token = store.get("sof_admin_token") || "";
   let me = store.get("sof_admin_user") || "";
-  let data = { overview: null, players: [], rooms: [] };
+  let data = { overview: null, players: [], rooms: [], pay: null };
   let sortKey = "last_active", sortDir = -1;
   let timers = [];
 
@@ -572,7 +595,10 @@
         <div class="fact"><div class="k">เซฟล่าสุด</div><div class="v">${ago(d.saved_at)}</div></div>
         <div class="fact"><div class="k">ตัวละคร</div><div class="v num">${d.characters.length}</div></div>
         <div class="fact"><div class="k">ไอเทมทั้งหมด</div><div class="v num">${fmt(totalItems)}</div></div>
+        <div class="fact"><div class="k">เติมเงินรวม</div><div class="v">${money(d.spent_cents || 0, "usd")}</div></div>
       </div>`;
+      if ((d.purchases || []).length) h += `<h4>การเติมเงิน (${(d.costumes_owned || []).length} คอสตูมที่เป็นเจ้าของ)</h4><table class="mini">${
+        d.purchases.map((x) => `<tr><td>${dt(x.created)}</td><td>${esc(x.name || x.sku)}</td><td class="r num">${money(x.amount_cents, x.currency)}</td><td>${PAY_STATE[x.state] || esc(x.state)}</td></tr>`).join("")}</table>`;
       if (!d.characters.length) h += `<div class="empty">บัญชีนี้ยังไม่มีตัวละครบนเซิร์ฟเวอร์</div>`;
       for (const c of d.characters) {
         const s = c.summary;
@@ -625,12 +651,34 @@
       : `<tr><td colspan="8" class="empty">ตอนนี้ไม่มีห้องเปิดอยู่</td></tr>`;
   }
 
+  // ---------- เติมเงิน (v41) ----------
+  const money = (cents, cur) => (Number(cents || 0) / 100).toLocaleString("en-US", { style: "currency", currency: (cur || "usd").toUpperCase() });
+  const PAY_STATE = { paid: '<span class="tag ok">จ่ายแล้ว</span>', pending: '<span class="tag warn">รอจ่าย</span>', failed: '<span class="tag">ยกเลิก</span>' };
+  function renderPay() {
+    const d = data.pay; if (!d) return;
+    const t = d.totals;
+    $("#b-pay").textContent = t.paid;
+    $("#paykpis").innerHTML = [
+      kpi("รายได้รวม", money(t.revenue_cents, d.currency), `${fmt(t.paid)} รายการที่จ่ายสำเร็จ`),
+      kpi("24 ชั่วโมง", money(t.revenue_24h_cents, d.currency), `7 วัน: ${money(t.revenue_7d_cents, d.currency)}`),
+      kpi("30 วัน", money(t.revenue_30d_cents, d.currency)),
+      kpi("ผู้ที่เคยจ่าย", fmt(t.paying_users), `เฉลี่ยคนละ ${money(t.arppu_cents, d.currency)}`),
+      kpi("รอจ่าย / ยกเลิก", `${fmt(t.pending)} / ${fmt(t.failed)}`, `ทั้งหมด ${fmt(t.orders)} รายการ`, t.pending ? "warn" : ""),
+      kpi("สถานะร้านค้า", d.enabled ? "เปิดขาย" : "ปิด", d.enabled ? "เชื่อม Stripe แล้ว" : "ยังไม่ตั้งค่า STRIPE_SECRET_KEY", d.enabled ? "live" : "alert"),
+    ].join("");
+    const short = (x) => { const [, m, dd] = x.split("-"); return `${+dd}/${+m}`; };
+    $("#c-pay").innerHTML = columns([{ key: "USD", color: "var(--gold)", values: d.by_day.map((x) => ({ label: x.day, n: Math.round(x.cents / 100) })) }], { short, ticks: 8 });
+    $("#pay-top").innerHTML = d.top_buyers.length ? `<table class="mini">${d.top_buyers.map((b, i) => `<tr class="click" data-user="${esc(b.user)}"><td class="rank num">${i + 1}</td><td><b>${esc(b.user)}</b><div class="muted" style="font-size:12px">${b.orders} ชุด · ล่าสุด ${ago(b.last)}</div></td><td class="r">${money(b.cents, d.currency)}</td></tr>`).join("")}</table>` : `<div class="empty">ยังไม่มีการเติมเงิน</div>`;
+    $("#pay-sku").innerHTML = d.by_sku.some((x) => x.orders) ? hbars(d.by_sku.filter((x) => x.orders).map((x) => ({ label: x.name, n: x.orders }))) : `<div class="empty">ยังไม่มียอดขาย</div>`;
+    $("#paybody").innerHTML = d.recent.length ? d.recent.map((x) => `<tr><td>${dt(x.created)}<div class="muted" style="font-size:12px">${ago(x.created)}</div></td><td class="click" data-user="${esc(x.user)}"><b>${esc(x.user)}</b></td><td>${esc(x.name || x.sku)}</td><td class="r num">${money(x.amount_cents, x.currency)}</td><td>${PAY_STATE[x.state] || esc(x.state)}</td><td class="hide-sm muted" style="font-size:12px">${esc(x.session || "")}</td></tr>`).join("") : `<tr><td colspan="6" class="empty">ยังไม่มีรายการ</td></tr>`;
+  }
+
   // ---------- โหลดข้อมูล ----------
   async function loadAll(fresh) {
     try {
-      const [o, p, r] = await Promise.all([call("overview", { fresh }), call("players", { fresh: false }), call("rooms")]);
-      data.overview = o; data.players = p.players; data.rooms = r.rooms;
-      renderOverview(); renderPlayers(); renderRooms();
+      const [o, p, r, pay] = await Promise.all([call("overview", { fresh }), call("players", { fresh: false }), call("rooms"), call("payments")]);
+      data.overview = o; data.players = p.players; data.rooms = r.rooms; data.pay = pay;
+      renderOverview(); renderPlayers(); renderRooms(); renderPay();
       $("#updated").textContent = "อัปเดต " + new Date().toLocaleTimeString("th-TH", { timeZone: TZ });
     } catch (err) { if (token) toast("โหลดข้อมูลไม่สำเร็จ: " + err.message); }
   }
