@@ -1,11 +1,7 @@
 // api/save.js -- เซฟตัวละครบนเซิร์ฟเวอร์ (v30): POST {action:"get"|"put", token, save}
+// v57: เซฟก้อนใหญ่ได้ถึง 1.5 MB แต่จำกัดจำนวนครั้งต่อนาที
 import { handleSave } from "../lib/save.js";
-export default async function handler(req, res) {
-  if (req.method === "OPTIONS") { res.status(204).end(); return; }
-  try {
-    let body = req.body;
-    if (typeof body === "string") { try { body = JSON.parse(body); } catch { body = {}; } }
-    const [code, out] = await handleSave(req.method, body || {});
-    res.status(code).json(out);
-  } catch (e) { res.status(500).json({ ok: false, msg: "server error: " + (e && e.message) }); }
-}
+import { endpoint } from "../lib/endpoint.js";
+
+export default endpoint({ name: "save", limit: 40, burst: 12, maxBody: 2 * 1024 * 1024 },
+  (method, body) => handleSave(method, body));

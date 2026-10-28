@@ -1,11 +1,7 @@
 // api/auth.js -- POST {action:"register"|"login", user, pass} | {action:"me", token}
+// v57: โควตาแน่นเป็นพิเศษ (กันไล่เดารหัสผ่าน/สมัครรัว) — เกินแล้วโดนระงับชั่วคราวแบบทวีคูณ
 import { handleAuth } from "../lib/accounts.js";
-export default async function handler(req, res) {
-  if (req.method === "OPTIONS") { res.status(204).end(); return; }
-  try {
-    let body = req.body;
-    if (typeof body === "string") { try { body = JSON.parse(body); } catch { body = {}; } }
-    const [code, out] = await handleAuth(req.method, body || {}, req.headers || {});
-    res.status(code).json(out);
-  } catch (e) { res.status(500).json({ ok: false, msg: "server error: " + (e && e.message) }); }
-}
+import { endpoint } from "../lib/endpoint.js";
+
+export default endpoint({ name: "auth", limit: 30, burst: 10, maxBody: 4 * 1024 },
+  (method, body, headers) => handleAuth(method, body, headers));

@@ -1,11 +1,8 @@
 // api/signal.js -- POST {action:"send", room, me, to, msg} | {action:"poll", room, me}
+// v57: เส้นทางนี้ถูกเรียกถี่ที่สุด (ตอนจับคู่ WebRTC ถามทุก 0.4 วิ) โควตาจึงสูงกว่าเส้นอื่น
+//      แต่ยังต่ำกว่าการยิงถล่มหลายเท่า และเผื่อผู้เล่นหลายคนอยู่หลัง IP เดียวกัน (บ้าน/ร้านเน็ต)
 import { handleSignal } from "../lib/signal.js";
-export default async function handler(req, res) {
-  if (req.method === "OPTIONS") { res.status(204).end(); return; }
-  try {
-    let body = req.body;
-    if (typeof body === "string") { try { body = JSON.parse(body); } catch { body = {}; } }
-    const [code, out] = await handleSignal(req.method, body || {}, req.headers || {});
-    res.status(code).json(out);
-  } catch (e) { res.status(500).json({ ok: false, msg: "server error: " + (e && e.message) }); }
-}
+import { endpoint } from "../lib/endpoint.js";
+
+export default endpoint({ name: "signal", limit: 600, burst: 80, maxBody: 32 * 1024 },
+  (method, body, headers) => handleSignal(method, body, headers));

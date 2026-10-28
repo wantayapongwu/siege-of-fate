@@ -1,12 +1,6 @@
 // api/shop.js -- v41: ร้านคอสตูมเงินจริง | POST {action, token, ...}
 import { handleShop } from "../lib/shop.js";
-export default async function handler(req, res) {
-  if (req.method === "OPTIONS") { res.status(204).end(); return; }
-  try {
-    let body = req.body;
-    if (typeof body === "string") { try { body = JSON.parse(body); } catch { body = {}; } }
-    const [code, out] = await handleShop(req.method, body || {}, req.headers || {});
-    res.setHeader("Cache-Control", "no-store");
-    res.status(code).json(out);
-  } catch (e) { res.status(500).json({ ok: false, msg: "server error: " + (e && e.message) }); }
-}
+import { endpoint } from "../lib/endpoint.js";
+
+export default endpoint({ name: "shop", limit: 60, burst: 15, maxBody: 32 * 1024 },
+  (method, body, headers) => handleShop(method, body, headers));
