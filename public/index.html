@@ -109,9 +109,9 @@ body {
 			<div id="status-notice"></div>
 		</div>
 
-		<script src="index.js?v=afe85891cd"></script>
+		<script src="index.js?v=6a3b65470e"></script>
 		<script>
-const GODOT_CONFIG = {"mainPack":"index.pck?v=afe85891cd","args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":55891628,"index.wasm":38034280},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
+const GODOT_CONFIG = {"mainPack":"index.pck?v=6a3b65470e","args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":55892668,"index.wasm":38034280},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
 
@@ -215,6 +215,78 @@ const engine = new Engine(GODOT_CONFIG);
 	}
 }());
 		</script>
-	</body>
+	<!-- v59.1: หน้าช่วยเหลือเมื่อเบราว์เซอร์เปิด WebGL2 ไม่ได้ (แทน error ภาษาอังกฤษของ Godot)
+     ไฟล์นี้ถูกแทรกเข้าไปใน index.html ตอน build โดย tools/build_web.sh -->
+<style>
+#sof-gl-help {
+	display: none; position: fixed; inset: 0; z-index: 99999;
+	background: #0b0710ee; color: #e9e2f5; overflow: auto;
+	font-family: system-ui, "Segoe UI", "Noto Sans Thai", sans-serif;
+	align-items: center; justify-content: center; padding: 24px;
+}
+#sof-gl-help .box {
+	max-width: 620px; width: 100%; background: #1a1026;
+	border: 2px solid #6b4ea8; border-radius: 10px; padding: 22px 26px;
+	box-shadow: 0 0 40px #000a;
+}
+#sof-gl-help h2 { margin: 0 0 6px; font-size: 20px; color: #ffd84a; }
+#sof-gl-help p.sub { margin: 0 0 14px; font-size: 14px; color: #b3a7c9; }
+#sof-gl-help ol { margin: 0 0 14px; padding-left: 20px; line-height: 1.75; font-size: 14px; }
+#sof-gl-help code {
+	background: #2a1b3d; border: 1px solid #44305f; border-radius: 4px;
+	padding: 1px 6px; font-size: 13px; color: #9fe3ff; user-select: all;
+}
+#sof-gl-help .note { font-size: 13px; color: #b3a7c9; line-height: 1.7; border-top: 1px solid #3a2a52; padding-top: 12px; }
+#sof-gl-help a { color: #9fe3ff; }
+#sof-gl-help .btn {
+	display: inline-block; margin-top: 14px; background: #6b4ea8; color: #fff;
+	border: 0; border-radius: 6px; padding: 9px 18px; font-size: 14px; cursor: pointer;
+}
+#sof-gl-help .btn:hover { background: #8162c7; }
+</style>
+<div id="sof-gl-help">
+	<div class="box">
+		<h2>เครื่องนี้ยังเปิด WebGL2 ไม่ได้</h2>
+		<p class="sub">เกมต้องใช้การเร่งความเร็วกราฟิก (WebGL2) ของเบราว์เซอร์ — ตัวเกมไม่ได้เสีย แค่ต้องเปิดค่านี้ก่อน</p>
+		<ol>
+			<li>Chrome: เปิด <code>chrome://settings/system</code> (Edge ใช้ <code>edge://settings/system</code>)
+				แล้วเปิด <b>“ใช้การเร่งความเร็วกราฟิกเมื่อพร้อมใช้งาน”</b> → ปิดเปิดเบราว์เซอร์ใหม่</li>
+			<li>เช็กที่ <code>chrome://gpu</code> บรรทัด <b>WebGL2</b> ต้องขึ้น <i>Hardware accelerated</i></li>
+			<li>ถ้ายังไม่ได้: <code>chrome://flags</code> ค้นคำว่า <b>ignore-gpu-blocklist</b> ตั้งเป็น <b>Enabled</b> แล้วกด Relaunch</li>
+			<li>ยังไม่ได้อีก = ไดรเวอร์การ์ดจอเก่าเกินไป ให้อัปเดตไดรเวอร์ (NVIDIA / AMD / Intel) แล้วรีสตาร์ตเครื่อง</li>
+		</ol>
+		<p class="note">
+			ทดสอบว่าเครื่องรองรับจริงไหม: <a href="https://get.webgl.org/webgl2/" target="_blank" rel="noopener">get.webgl.org/webgl2</a>
+			(ถ้าหน้านั้นไม่ขึ้นลูกบาศก์หมุน = เบราว์เซอร์ยังปิด WebGL2 อยู่)<br>
+			เปิดจากลิงก์ในแอป Facebook / Line? ให้กด <b>“เปิดด้วยเบราว์เซอร์”</b> (Chrome / Safari) แทน<br>
+			แนะนำ Chrome, Edge, Firefox หรือ Safari รุ่นใหม่ บนเครื่องที่มีการ์ดจอไม่เก่ากว่าปี 2012
+		</p>
+		<button class="btn" onclick="location.reload()">ลองใหม่อีกครั้ง</button>
+	</div>
+</div>
+<script>
+(function () {
+	function supported() {
+		try {
+			if (!window.WebGL2RenderingContext) return false;
+			var c = document.createElement("canvas");
+			return !!(c.getContext("webgl2") || c.getContext("webgl2", { failIfMajorPerformanceCaveat: false }));
+		} catch (e) { return false; }
+	}
+	function show() {
+		var el = document.getElementById("sof-gl-help");
+		if (el) el.style.display = "flex";
+	}
+	if (!supported()) { show(); return; }
+	// รองรับกรณีสร้าง context ได้ แต่ Godot ยังฟ้อง WebGL2 ตอนเริ่มเกม
+	var notice = document.getElementById("status-notice");
+	if (notice && window.MutationObserver) {
+		new MutationObserver(function () {
+			if ((notice.textContent || "").indexOf("WebGL2") >= 0) show();
+		}).observe(notice, { childList: true, characterData: true, subtree: true });
+	}
+})();
+</script>
+</body>
 </html>
 
