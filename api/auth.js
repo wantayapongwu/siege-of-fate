@@ -3,5 +3,5 @@
 import { handleAuth } from "../lib/accounts.js";
 import { endpoint } from "../lib/endpoint.js";
 
-export default endpoint({ name: "auth", limit: 30, burst: 10, maxBody: 4 * 1024 },
+export default endpoint({ name: "auth", limit: 20, burst: 6, maxBody: 4 * 1024 },
   (method, body, headers) => handleAuth(method, body, headers));

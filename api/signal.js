@@ -4,5 +4,5 @@
 import { handleSignal } from "../lib/signal.js";
 import { endpoint } from "../lib/endpoint.js";
 
-export default endpoint({ name: "signal", limit: 600, burst: 80, maxBody: 32 * 1024 },
+export default endpoint({ name: "signal", limit: 300, burst: 60, maxBody: 16 * 1024 },
   (method, body, headers) => handleSignal(method, body, headers));

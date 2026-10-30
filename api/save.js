@@ -3,5 +3,5 @@
 import { handleSave } from "../lib/save.js";
 import { endpoint } from "../lib/endpoint.js";
 
-export default endpoint({ name: "save", limit: 40, burst: 12, maxBody: 2 * 1024 * 1024 },
+export default endpoint({ name: "save", limit: 20, burst: 8, maxBody: 512 * 1024 },
   (method, body) => handleSave(method, body));

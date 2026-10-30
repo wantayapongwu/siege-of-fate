@@ -6,5 +6,5 @@
 import { handle } from "../lib/lobby.js";
 import { endpoint } from "../lib/endpoint.js";
 
-export default endpoint({ name: "rooms", limit: 120, burst: 30, maxBody: 8 * 1024 },
+export default endpoint({ name: "rooms", limit: 90, burst: 20, maxBody: 8 * 1024 },
   (method, body, headers, query) => handle(method, body, headers, query));
