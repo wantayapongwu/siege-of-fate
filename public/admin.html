@@ -184,6 +184,8 @@
     <input type="text" id="lu" name="username" autocomplete="username" required>
     <label for="lp">Password</label>
     <input type="password" id="lp" name="password" autocomplete="current-password" required>
+    <label for="lk">คีย์ผู้ดูแล (ถ้าตั้ง SOF_ADMIN_KEY ไว้)</label>
+    <input type="password" id="lk" name="adminkey" autocomplete="off">
     <button class="btn primary" type="submit" id="lbtn">เข้าสู่ระบบ</button>
     <div class="err" id="lerr"></div>
     <div class="hint">ใช้บัญชีเดียวกับในเกม — เข้าได้เฉพาะบัญชีผู้ดูแลเท่านั้น<br>หน้านี้อ่านข้อมูลอย่างเดียว ไม่แก้ไขข้อมูลผู้เล่น</div>
@@ -351,6 +353,7 @@
     del(k) { try { sessionStorage.removeItem(k); } catch {} },
   };
   let token = store.get("sof_admin_token") || "";
+  let adminKey = store.get("sof_admin_key") || "";   // v78.4: ชั้นที่สอง (เก็บแค่ในแท็บนี้)
   let me = store.get("sof_admin_user") || "";
   let data = { overview: null, players: [], rooms: [], pay: null };
   let sortKey = "last_active", sortDir = -1;
@@ -375,7 +378,7 @@
   async function call(action, extra = {}) {
     pending++; $("#loading").style.display = "block";
     try {
-      const r = await fetch(API, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action, token, ...extra }) });
+      const r = await fetch(API, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action, token, key: adminKey, ...extra }) });
       const j = await r.json().catch(() => ({ ok: false, msg: "ตอบกลับไม่ใช่ JSON" }));
       if (r.status === 401 || r.status === 403) { logout(j.msg || "ไม่มีสิทธิ์"); throw new Error(j.msg); }
       if (!j.ok) throw new Error(j.msg || "ผิดพลาด");
@@ -400,14 +403,16 @@
       if (!j.ok) throw new Error(j.msg || "ล็อกอินไม่สำเร็จ");
       if (!j.admin) throw new Error("บัญชีนี้ไม่ใช่ผู้ดูแล");
       token = j.token; me = j.user;
+      adminKey = $("#lk").value;
       store.set("sof_admin_token", token); store.set("sof_admin_user", me);
-      $("#lp").value = "";
+      store.set("sof_admin_key", adminKey);
+      $("#lp").value = ""; $("#lk").value = "";
       start();
     } catch (err) { $("#lerr").textContent = err.message; }
     finally { $("#lbtn").disabled = false; }
   });
   function logout(msg) {
-    token = ""; store.del("sof_admin_token");
+    token = ""; adminKey = ""; store.del("sof_admin_token"); store.del("sof_admin_key");
     timers.forEach(clearInterval); timers = [];
     $("#app").style.display = "none"; $("#login").style.display = "grid";
     if (msg) $("#lerr").textContent = msg;
