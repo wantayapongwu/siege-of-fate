@@ -8,6 +8,7 @@ import { handleAuth } from "./lib/accounts.js";
 import { handleSignal } from "./lib/signal.js";
 import { handleSave } from "./lib/save.js";
 import { handleGStash } from "./lib/gstash.js";
+import { handleTrade } from "./lib/trade.js";
 import { handleAdmin } from "./lib/admin.js";
 import { handleShop, handleWebhook } from "./lib/shop.js";
 import { storageKind } from "./lib/store.js";
@@ -18,7 +19,7 @@ http.createServer(async (req, res) => {
   const u = new URL(req.url, "http://x");
   const send = (code, obj) => { res.writeHead(code, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }); res.end(JSON.stringify(obj)); };
   if (u.pathname === "/api/health") return send(200, { ok: true, storage: storageKind() });
-  const routes = { "/api/rooms": (m, b, h, q) => handle(m, b, h, q), "/api/auth": (m, b, h) => handleAuth(m, b, h), "/api/signal": (m, b, h) => handleSignal(m, b, h), "/api/save": (m, b) => handleSave(m, b), "/api/gstash": (m, b) => handleGStash(m, b), "/api/admin": (m, b, h) => handleAdmin(m, b, h), "/api/shop": (m, b, h) => handleShop(m, b, h) };
+  const routes = { "/api/rooms": (m, b, h, q) => handle(m, b, h, q), "/api/auth": (m, b, h) => handleAuth(m, b, h), "/api/signal": (m, b, h) => handleSignal(m, b, h), "/api/save": (m, b) => handleSave(m, b), "/api/gstash": (m, b) => handleGStash(m, b), "/api/trade": (m, b, h) => handleTrade(m, b, h), "/api/admin": (m, b, h) => handleAdmin(m, b, h), "/api/shop": (m, b, h) => handleShop(m, b, h) };
   if (u.pathname === "/api/stripe_webhook") {
     let raw = "";
     req.on("data", (c) => (raw += c));
