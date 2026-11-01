@@ -543,7 +543,8 @@
     const bans = j.bans || [], ch = j.cheaters || [];
     $("#b-ban").textContent = fmt(bans.length);
     $("#bn-auto").innerHTML = j.autoban
-      ? `ถูกปฏิเสธแบบ "ค่าที่เขียนขึ้นเองแน่ๆ" ครบ <b>${j.autoban}</b> ครั้ง = ระงับอัตโนมัติ (นับได้ไม่ถี่กว่า 10 นาทีต่อครั้ง และกฎ "อัตราเร็วเกินจริง" ไม่นับ)`
+      ? `ถูกปฏิเสธแบบ "ค่าที่เขียนขึ้นเองแน่ๆ" ครบ <b>${j.autoban}</b> ครั้ง = ระงับอัตโนมัติ
+         <br><span class="sub">นับได้ไม่ถี่กว่า ${j.strike_gap_min ?? 2} นาทีต่อครั้ง · เซฟเดียวที่ชนกฎหลายชนิดนับเท่าจำนวนชนิด (สูงสุด ${j.strike_max ?? 3}) · กฎ "อัตราเร็วเกินจริง" และไอเทมผิด ไม่นับ</span>`
       : "แบนอัตโนมัติปิดอยู่ (env SOF_AUTOBAN=0)";
     $("#bn-list").innerHTML = !bans.length ? '<p class="sub">ยังไม่มีบัญชีที่ถูกระงับ</p>'
       : `<table class="tbl"><thead><tr><th>บัญชี</th><th>เมื่อ</th><th>โดย</th><th>เหตุผล</th><th>ปลดเมื่อ</th><th></th></tr></thead><tbody>`
