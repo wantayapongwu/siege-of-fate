@@ -342,6 +342,17 @@
         </p>
         <div id="boss"></div>
       </div>
+
+      <!-- ---------- v79.0: สถิติการรีเซ็ตดันเจี้ยน ---------- -->
+      <div class="card box">
+        <h2>การรีเซ็ตดันเจี้ยน</h2>
+        <p class="sub">
+          ตัวเลข <b>ฝั่งเซิร์ฟเวอร์</b> นับตอนเกมยิงมาบอกทุกครั้งที่รีดัน — เวลาและการนับเกิดที่เซิร์ฟเวอร์ ปลอมย้อนหลังไม่ได้<br>
+          ตัวเลข <b>ในเซฟ</b> มาจากเครื่องผู้เล่น (แก้ได้) เอาไว้เทียบกัน — ถ้าในเซฟสูงกว่าเซิร์ฟเวอร์มากคือน่าดูเพิ่ม<br>
+          เล่นออฟไลน์/เน็ตหลุด = เซิร์ฟเวอร์นับน้อยกว่าจริง ไม่ใช่การโกง | ปาร์ตี้โหวตรีผ่าน = ทุกคนถูกรี จึงนับคนละครั้ง
+        </p>
+        <div id="dgr"></div>
+      </div>
     </section>
 
     <!-- ---------- v78.6: ล้างข้อมูลทั้งเซิร์ฟเวอร์ (เปิดเบต้ารอบใหม่) ---------- -->
@@ -454,6 +465,42 @@
       html += `</tbody></table>`;
     }
     $("#boss").innerHTML = html;
+  }
+
+  // ---------- v79.0: สถิติการรีเซ็ตดันเจี้ยน ----------
+  function drawResets(rr, inSaves) {
+    if (!rr) { $("#dgr").innerHTML = ""; return; }
+    let html = `<p>เซิร์ฟเวอร์นับได้ <b>${fmt(rr.total || 0)}</b> ครั้ง จากผู้เล่น ${fmt(rr.players || 0)} คน`
+      + ` · ในเซฟรวม <b>${fmt(inSaves || 0)}</b> ครั้ง`
+      + (rr.ignored ? ` · ไม่นับเพราะยิงรัว/เกินเพดาน ${fmt(rr.ignored)} ครั้ง` : "") + `</p>`;
+    if (!rr.total && !inSaves) { $("#dgr").innerHTML = '<p class="sub">ยังไม่มีใครรีดันเลย</p>'; return; }
+    if ((rr.top_maps || []).length) {
+      const max = Math.max(...rr.top_maps.map((m) => m.resets), 1);
+      html += `<h3 style="margin:16px 0 6px">ด่านที่ถูกรีบ่อยสุด</h3>`;
+      html += `<table class="tbl"><thead><tr><th>ด่าน</th><th class="num">ถูกรี</th><th>สัดส่วน</th></tr></thead><tbody>`;
+      for (const m of rr.top_maps) {
+        const w = Math.round((m.resets / max) * 100);
+        html += `<tr><td>${esc(m.map)}</td><td class="num">${fmt(m.resets)}</td>
+          <td><div style="background:#1b2030;border-radius:4px;height:10px;width:160px"><div style="background:var(--gold);height:10px;width:${w}%;border-radius:4px"></div></div></td></tr>`;
+      }
+      html += `</tbody></table>`;
+    }
+    if ((rr.per || []).length) {
+      html += `<h3 style="margin:16px 0 6px">รีบ่อยสุดรายบัญชี</h3>`;
+      html += `<table class="tbl"><thead><tr><th>บัญชี</th><th class="num">รีไปแล้ว</th><th class="num">ถูกเมิน</th><th>ครั้งล่าสุด</th></tr></thead><tbody>`;
+      for (const p of rr.per)
+        html += `<tr><td>${esc(p.user)}</td><td class="num">${fmt(p.resets)}</td><td class="num">${p.skipped ? fmt(p.skipped) : "—"}</td><td>${p.last ? new Date(p.last).toLocaleString("th-TH") : "—"}</td></tr>`;
+      html += `</tbody></table>`;
+    }
+    if ((rr.gaps || []).length) {
+      html += `<h3 style="margin:16px 0 6px">ตัวเลขในเซฟสูงกว่าที่เซิร์ฟเวอร์นับได้</h3>`;
+      html += `<p class="sub">ปกติเกิดจากเล่นออฟไลน์ ถ้าต่างกันมากผิดปกติค่อยดูบัญชีนั้นเพิ่ม</p>`;
+      html += `<table class="tbl"><thead><tr><th>บัญชี</th><th class="num">ในเซฟ</th><th class="num">เซิร์ฟเวอร์</th><th class="num">ต่างกัน</th></tr></thead><tbody>`;
+      for (const g of rr.gaps)
+        html += `<tr><td>${esc(g.user)}</td><td class="num">${fmt(g.client)}</td><td class="num">${fmt(g.server)}</td><td class="num">${fmt(g.client - g.server)}</td></tr>`;
+      html += `</tbody></table>`;
+    }
+    $("#dgr").innerHTML = html;
   }
 
   // ---------- v78.6: ล้างเซิร์ฟเวอร์ ----------
@@ -611,6 +658,7 @@
         d.copies.map((c) => `<a href="#" class="chip" data-user="${esc(c.user)}">${esc(c.user)} · ${esc(c.where)}</a>`).join("")}</td></tr>`).join("")}</tbody></table></div>`
       : `<div class="empty">✔ ไม่พบไอเทมที่ UID ซ้ำ</div>`;
     drawBosses(o.bosses || []);   // v78.9: สถิติบอส
+    drawResets(o.resets, (o.totals || {}).dungeon_resets_in_saves);   // v79.0: สถิติการรีดัน
   }
   function charList(list, right) {
     if (!list.length) return `<div class="empty">ยังไม่มีตัวละคร</div>`;
