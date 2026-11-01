@@ -211,6 +211,7 @@
     <button data-p="pay">เติมเงิน <span class="badge" id="b-pay">0</span></button>
     <button data-p="dups">ไอเทมซ้ำ <span class="badge" id="b-dups">0</span></button>
     <button data-p="boss">สถิติบอส <span class="badge" id="b-boss">0</span></button>
+    <button data-p="ban">โกง & แบน <span class="badge" id="b-ban">0</span></button>
     <button data-p="danger">ล้างเซิร์ฟเวอร์</button>
   </nav>
 
@@ -352,6 +353,40 @@
           เล่นออฟไลน์/เน็ตหลุด = เซิร์ฟเวอร์นับน้อยกว่าจริง ไม่ใช่การโกง | ปาร์ตี้โหวตรีผ่าน = ทุกคนถูกรี จึงนับคนละครั้ง
         </p>
         <div id="dgr"></div>
+      </div>
+    </section>
+
+    <!-- ---------- v79.2: ธงกันโกง + ระงับบัญชี ---------- -->
+    <section class="page" id="p-ban">
+      <div class="card box">
+        <h2>ระงับบัญชี</h2>
+        <p class="sub">
+          ระงับแล้ว: ล็อกอินไม่ได้ · token เดิมที่ค้างอยู่ก็อัป/โหลดเซฟไม่ได้ · กู้รหัสผ่านไม่ได้<br>
+          <b>ข้อมูลไม่ถูกลบ</b> — ปลดแบนแล้วเล่นต่อได้เหมือนเดิม | แบนบัญชีผู้ดูแลไม่ได้
+        </p>
+        <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin:14px 0">
+          <label style="display:grid;gap:4px">
+            <span class="sub">บัญชี</span>
+            <input id="bn-user" placeholder="Username" style="padding:8px 10px;border-radius:8px;background:#141821;color:inherit;border:1px solid #333a49">
+          </label>
+          <label style="display:grid;gap:4px">
+            <span class="sub">เหตุผล (ผู้เล่นเห็นด้วย)</span>
+            <input id="bn-reason" placeholder="เช่น แก้ไฟล์เซฟ" style="padding:8px 10px;border-radius:8px;background:#141821;color:inherit;border:1px solid #333a49;min-width:220px">
+          </label>
+          <label style="display:grid;gap:4px">
+            <span class="sub">กี่วัน (0 = ถาวร)</span>
+            <input id="bn-days" type="number" min="0" value="0" style="width:110px;padding:8px 10px;border-radius:8px;background:#141821;color:inherit;border:1px solid #333a49">
+          </label>
+          <button class="btn small" id="bn-go" style="border-color:#7a2b2b;color:#ff8a8a">ระงับบัญชี</button>
+          <button class="btn small" id="bn-off">ปลดแบน</button>
+        </div>
+        <div id="bn-list"></div>
+      </div>
+
+      <div class="card box">
+        <h2>ธงกันโกง</h2>
+        <p class="sub" id="bn-auto"></p>
+        <div id="bn-cheat"></div>
       </div>
     </section>
 
@@ -502,6 +537,64 @@
     }
     $("#dgr").innerHTML = html;
   }
+
+  // ---------- v79.2: ธงกันโกง + ระงับบัญชี ----------
+  function drawBans(j) {
+    const bans = j.bans || [], ch = j.cheaters || [];
+    $("#b-ban").textContent = fmt(bans.length);
+    $("#bn-auto").innerHTML = j.autoban
+      ? `ถูกปฏิเสธแบบ "ค่าที่เขียนขึ้นเองแน่ๆ" ครบ <b>${j.autoban}</b> ครั้ง = ระงับอัตโนมัติ (นับได้ไม่ถี่กว่า 10 นาทีต่อครั้ง และกฎ "อัตราเร็วเกินจริง" ไม่นับ)`
+      : "แบนอัตโนมัติปิดอยู่ (env SOF_AUTOBAN=0)";
+    $("#bn-list").innerHTML = !bans.length ? '<p class="sub">ยังไม่มีบัญชีที่ถูกระงับ</p>'
+      : `<table class="tbl"><thead><tr><th>บัญชี</th><th>เมื่อ</th><th>โดย</th><th>เหตุผล</th><th>ปลดเมื่อ</th><th></th></tr></thead><tbody>`
+        + bans.map((b) => `<tr><td>${esc(b.user)}</td><td>${b.at ? new Date(b.at).toLocaleString("th-TH") : "—"}</td>
+            <td>${b.by === "auto" ? '<span class="badge">อัตโนมัติ</span>' : esc(b.by)}</td>
+            <td>${esc(b.reason || "—")}</td>
+            <td>${b.until ? new Date(b.until).toLocaleString("th-TH") : "ถาวร"}</td>
+            <td><button class="btn small" data-unban="${esc(b.user)}">ปลดแบน</button></td></tr>`).join("")
+        + `</tbody></table>`;
+    $("#bn-cheat").innerHTML = !ch.length ? '<p class="sub">ยังไม่มีบัญชีที่ถูกปฏิเสธเซฟ</p>'
+      : `<table class="tbl"><thead><tr><th>บัญชี</th><th class="num">ครั้งที่นับ</th><th class="num">ธงทั้งหมด</th><th>ล่าสุด</th><th>เหตุผลล่าสุด</th><th></th></tr></thead><tbody>`
+        + ch.map((x) => {
+            const last = (x.items || []).slice(-1)[0] || {};
+            return `<tr><td>${esc(x.user)}${x.banned ? ' <span class="badge">ระงับแล้ว</span>' : ""}</td>
+              <td class="num">${fmt(x.strikes || 0)}</td><td class="num">${fmt(x.n || 0)}</td>
+              <td>${x.last ? new Date(x.last).toLocaleString("th-TH") : "—"}</td>
+              <td>${esc((last.reasons || []).join(" · ").slice(0, 160) || "—")}</td>
+              <td>${x.banned ? `<button class="btn small" data-unban="${esc(x.user)}">ปลดแบน</button>`
+                             : `<button class="btn small" data-ban="${esc(x.user)}">ระงับ</button>`}</td></tr>`;
+          }).join("")
+        + `</tbody></table>`;
+  }
+  async function loadBans() {
+    try { drawBans(await call("cheaters")); } catch (err) { toast("โหลดรายการแบนไม่สำเร็จ: " + err.message); }
+  }
+  $("#bn-go").onclick = async () => {
+    const u = $("#bn-user").value.trim();
+    if (!u) return toast("ใส่ชื่อบัญชีก่อน");
+    if (!confirm('ระงับบัญชี "' + u + '" ?')) return;
+    try {
+      drawBans(await call("ban", { user: u, reason: $("#bn-reason").value.trim(), days: Number($("#bn-days").value) || 0 }));
+      toast("ระงับ " + u + " แล้ว"); await loadBans();
+    } catch (err) { toast("ระงับไม่สำเร็จ: " + err.message); }
+  };
+  $("#bn-off").onclick = async () => {
+    const u = $("#bn-user").value.trim();
+    if (!u) return toast("ใส่ชื่อบัญชีก่อน");
+    try { await call("unban", { user: u }); toast("ปลดแบน " + u + " แล้ว"); await loadBans(); }
+    catch (err) { toast("ปลดแบนไม่สำเร็จ: " + err.message); }
+  };
+  $("#p-ban").addEventListener("click", async (e) => {
+    const off = e.target.closest("[data-unban]"), on = e.target.closest("[data-ban]");
+    if (off) {
+      try { await call("unban", { user: off.dataset.unban }); toast("ปลดแบนแล้ว"); await loadBans(); }
+      catch (err) { toast("ปลดแบนไม่สำเร็จ: " + err.message); }
+    } else if (on) {
+      if (!confirm('ระงับบัญชี "' + on.dataset.ban + '" ?')) return;
+      try { await call("ban", { user: on.dataset.ban, reason: "ผู้ดูแลตรวจสอบแล้ว" }); toast("ระงับแล้ว"); await loadBans(); }
+      catch (err) { toast("ระงับไม่สำเร็จ: " + err.message); }
+    }
+  });
 
   // ---------- v78.6: ล้างเซิร์ฟเวอร์ ----------
   function wipeRows(j) {
@@ -827,9 +920,9 @@
   // ---------- โหลดข้อมูล ----------
   async function loadAll(fresh) {
     try {
-      const [o, p, r, pay] = await Promise.all([call("overview", { fresh }), call("players", { fresh: false }), call("rooms"), call("payments")]);
+      const [o, p, r, pay, bn] = await Promise.all([call("overview", { fresh }), call("players", { fresh: false }), call("rooms"), call("payments"), call("cheaters")]);
       data.overview = o; data.players = p.players; data.rooms = r.rooms; data.pay = pay;
-      renderOverview(); renderPlayers(); renderRooms(); renderPay();
+      renderOverview(); renderPlayers(); renderRooms(); renderPay(); drawBans(bn);   // v79.2
       $("#updated").textContent = "อัปเดต " + new Date().toLocaleTimeString("th-TH", { timeZone: TZ });
     } catch (err) { if (token) toast("โหลดข้อมูลไม่สำเร็จ: " + err.message); }
   }
