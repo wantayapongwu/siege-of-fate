@@ -67,6 +67,10 @@
     {
       "source": "/admin",
       "destination": "/admin.html"
+    },
+    {
+      "source": "/api/trade",
+      "destination": "/api/gstash"
     }
   ],
   "crons": [
