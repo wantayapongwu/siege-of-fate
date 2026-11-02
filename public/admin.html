@@ -388,6 +388,48 @@
         <p class="sub" id="bn-auto"></p>
         <div id="bn-cheat"></div>
       </div>
+
+      <!-- v80.26: ดูให้ชัดว่าบัญชีนี้โดนอะไร เพราะอะไร และควรทำอะไรต่อ -->
+      <div class="card box">
+        <h2>ตรวจสอบรายละเอียดของบัญชี</h2>
+        <p class="sub">พิมพ์ชื่อบัญชี (หรือกดชื่อในตารางด้านบน) เพื่อดูว่าถูกแบนโดยใคร ด้วยเหตุผลอะไร ชนกฎข้อไหนกี่ครั้ง และเลเวลที่ส่งมาเทียบกับที่ประวัติพาไปได้</p>
+        <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin:14px 0">
+          <label style="display:grid;gap:4px">
+            <span class="sub">บัญชี</span>
+            <input id="bw-user" placeholder="Username" style="padding:8px 10px;border-radius:8px;background:#141821;color:inherit;border:1px solid #333a49">
+          </label>
+          <button class="btn small" id="bw-go">ดูรายละเอียด</button>
+        </div>
+        <div id="bw-out"></div>
+      </div>
+
+      <!-- v80.26: ล้างข้อมูลทีละส่วน เพื่อให้ผู้เล่นคนเดิมใช้ไอดีเดิมเทสต่อได้ -->
+      <div class="card box">
+        <h2>ล้างข้อมูลผู้เล่น (บัญชีเดิม ล็อกอินเดิม)</h2>
+        <p class="sub">
+          ใช้ตอนอยากให้คนเดิมเทสต่อด้วยไอดีเดิม — ไม่ต้องลบบัญชีทั้งใบ<br>
+          <b>คอสตูมที่ซื้อด้วยเงินจริงไม่ถูกลบ</b> แม้จะเลือกล้างของ · ทุกครั้งจะ "ดูก่อน" ให้เสมอ ต้องกดยืนยันอีกรอบจึงแก้จริง
+        </p>
+        <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin:14px 0">
+          <label style="display:grid;gap:4px">
+            <span class="sub">บัญชี</span>
+            <input id="rp-user" placeholder="Username" style="padding:8px 10px;border-radius:8px;background:#141821;color:inherit;border:1px solid #333a49">
+          </label>
+        </div>
+        <div style="display:grid;gap:7px;margin:10px 0">
+          <label class="toggle"><input type="checkbox" id="rp-flags" checked> <b>ล้างธงกันโกง</b> — ตัวนับที่พาไปสู่การแบนอัตโนมัติ กลับเป็น 0</label>
+          <label class="toggle"><input type="checkbox" id="rp-unban" checked> <b>ปลดแบน</b> (ถ้าถูกแบนอยู่)</label>
+          <label class="toggle"><input type="checkbox" id="rp-rebase" checked> <b>ตั้งเส้นฐานใหม่จากเซฟปัจจุบัน</b> — ของที่มีตอนนี้ถือว่าถูกต้อง ตรวจแค่ส่วนที่โตขึ้นหลังจากนี้ <span class="sub">(ตัวนี้แก้อาการ "เลเวลเกินที่ฆ่ามา" ของตัวละครเก่า)</span></label>
+          <label class="toggle"><input type="checkbox" id="rp-level"> <b>ล้างเลเวล</b> — ทุกตัวละครกลับเป็นเลเวล 1 แต้มคืนทั้งหมด ล้างตัวนับการฆ่าและประวัติมอน</label>
+          <label class="toggle"><input type="checkbox" id="rp-items"> <b>ล้างของ</b> — กระเป๋า/ที่สวมใส่/ขวดยา/ออร์บ/คลัง และเงินเป็น 0 (คอสตูมที่ซื้อไว้ไม่ถูกลบ)</label>
+          <label class="toggle"><input type="checkbox" id="rp-fresh"> <b>ตั้งเป็น "บัญชีใหม่"</b> — เซฟแรกต่อไปต้องเป็นตัวละครใหม่จริง <span class="sub">(ต้องเลือกล้างเลเวล + ล้างของด้วย ไม่งั้นเซฟถัดไปจะถูกปฏิเสธ)</span></label>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn small" id="rp-dry">ดูก่อนว่าจะล้างอะไร</button>
+          <button class="btn small" id="rp-go" style="border-color:#7a2b2b;color:#ff8a8a">ล้างจริง</button>
+        </div>
+        <div id="rp-out"></div>
+      </div>
     </section>
 
     <!-- ---------- v78.6: ล้างข้อมูลทั้งเซิร์ฟเวอร์ (เปิดเบต้ารอบใหม่) ---------- -->
@@ -548,7 +590,7 @@
       : "แบนอัตโนมัติปิดอยู่ (env SOF_AUTOBAN=0)";
     $("#bn-list").innerHTML = !bans.length ? '<p class="sub">ยังไม่มีบัญชีที่ถูกระงับ</p>'
       : `<table class="tbl"><thead><tr><th>บัญชี</th><th>เมื่อ</th><th>โดย</th><th>เหตุผล</th><th>ปลดเมื่อ</th><th></th></tr></thead><tbody>`
-        + bans.map((b) => `<tr><td>${esc(b.user)}</td><td>${b.at ? new Date(b.at).toLocaleString("th-TH") : "—"}</td>
+        + bans.map((b) => `<tr><td><a href="#" data-why="${esc(b.user)}" style="color:#9fc7ff">${esc(b.user)}</a></td><td>${b.at ? new Date(b.at).toLocaleString("th-TH") : "—"}</td>
             <td>${b.by === "auto" ? '<span class="badge">อัตโนมัติ</span>' : esc(b.by)}</td>
             <td>${esc(b.reason || "—")}</td>
             <td>${b.until ? new Date(b.until).toLocaleString("th-TH") : "ถาวร"}</td>
@@ -558,7 +600,7 @@
       : `<table class="tbl"><thead><tr><th>บัญชี</th><th class="num">ครั้งที่นับ</th><th class="num">ธงทั้งหมด</th><th>ล่าสุด</th><th>เหตุผลล่าสุด</th><th></th></tr></thead><tbody>`
         + ch.map((x) => {
             const last = (x.items || []).slice(-1)[0] || {};
-            return `<tr><td>${esc(x.user)}${x.banned ? ' <span class="badge">ระงับแล้ว</span>' : ""}</td>
+            return `<tr><td><a href="#" data-why="${esc(x.user)}" style="color:#9fc7ff">${esc(x.user)}</a>${x.banned ? ' <span class="badge">ระงับแล้ว</span>' : ""}</td>
               <td class="num">${fmt(x.strikes || 0)}</td><td class="num">${fmt(x.n || 0)}</td>
               <td>${x.last ? new Date(x.last).toLocaleString("th-TH") : "—"}</td>
               <td>${esc((last.reasons || []).join(" · ").slice(0, 160) || "—")}</td>
@@ -586,6 +628,8 @@
     catch (err) { toast("ปลดแบนไม่สำเร็จ: " + err.message); }
   };
   $("#p-ban").addEventListener("click", async (e) => {
+    const who = e.target.closest("[data-why]");           // v80.26: กดชื่อบัญชี = เปิดรายละเอียด
+    if (who) { loadBanWhy(who.dataset.why); $("#bw-out").scrollIntoView({ behavior: "smooth", block: "center" }); return; }
     const off = e.target.closest("[data-unban]"), on = e.target.closest("[data-ban]");
     if (off) {
       try { await call("unban", { user: off.dataset.unban }); toast("ปลดแบนแล้ว"); await loadBans(); }
@@ -596,6 +640,126 @@
       catch (err) { toast("ระงับไม่สำเร็จ: " + err.message); }
     }
   });
+
+  // ---------- v80.26: รายละเอียดการแบนของบัญชีหนึ่ง (อ่านรู้เรื่อง) ----------
+  const tt = (t) => (t ? new Date(t).toLocaleString("th-TH") : "—");
+  function drawBanWhy(j) {
+    const b = j.ban || {}, s2 = j.strikes || {};
+    let h = `<h3 style="margin:14px 0 6px">${esc(j.user)}</h3>`;
+    h += `<p class="sub">สมัคร ${tt(j.account && j.account.created)} · ล็อกอินล่าสุด ${tt(j.account && j.account.last_login)} · เซฟล่าสุด ${tt(j.saved_at)}</p>`;
+    h += b.banned
+      ? `<div class="card box" style="border-color:#7a2b2b;margin:10px 0">
+           <b style="color:#ff8a8a">ถูกระงับอยู่</b>
+           <table class="tbl"><tbody>
+             <tr><td>ใครสั่งแบน</td><td><b>${esc(b.by_text)}</b></td></tr>
+             <tr><td>เมื่อ</td><td>${tt(b.at)}</td></tr>
+             <tr><td>เหตุผลที่ผู้เล่นเห็น</td><td>${esc(b.reason || "—")}</td></tr>
+             <tr><td>ปลดเมื่อ</td><td>${b.permanent ? "ถาวร (ต้องปลดด้วยมือ)" : tt(b.until) + " — อีก " + fmt(b.minutes_left) + " นาที"}</td></tr>
+             ${b.auto_reason_text ? `<tr><td>อธิบาย</td><td>${esc(b.auto_reason_text)}</td></tr>` : ""}
+           </tbody></table></div>`
+      : `<p style="color:#7fd48a"><b>ไม่ได้ถูกระงับ</b></p>`;
+    h += `<h4 style="margin:14px 0 4px">ธงกันโกง</h4>
+          <table class="tbl"><tbody>
+            <tr><td>ธงสะสม</td><td><b>${fmt(s2.count)}</b>${s2.limit ? " / " + fmt(s2.limit) + " (เหลืออีก " + fmt(s2.left) + " ครั้งจะถูกแบนอัตโนมัติ)" : " (แบนอัตโนมัติปิดอยู่)"}</td></tr>
+            <tr><td>จำนวนครั้งที่เซฟถูกปฏิเสธ</td><td>${fmt(s2.rejects)}</td></tr>
+            <tr><td>ครั้งแรก / ครั้งล่าสุด</td><td>${tt(s2.first_at)} → ${tt(s2.last_at)}</td></tr>
+            <tr><td>กฎที่ชนล่าสุด</td><td>${esc((s2.last_kinds || []).join(" · ") || "—")}</td></tr>
+          </tbody></table>
+          <p class="sub">${esc(s2.note || "")}</p>`;
+    if ((j.kinds || []).length) {
+      h += `<h4 style="margin:14px 0 4px">ชนกฎข้อไหน และหมายความว่าอะไร</h4>`;
+      for (const k of j.kinds) {
+        h += `<div class="card box" style="margin:8px 0"><b>${esc(k.kind)}</b> <span class="badge">${fmt(k.times)} ครั้ง</span>`;
+        if (k.help) {
+          h += `<table class="tbl"><tbody>
+                  <tr><td style="width:150px">คืออะไร</td><td>${esc(k.help.what)}</td></tr>
+                  <tr><td>ตรวจยังไง</td><td>${esc(k.help.why)}</td></tr>
+                  <tr><td>ผู้เล่นจริงชนได้ไหม</td><td>${esc(k.help.legit)}</td></tr>
+                  <tr><td>ควรทำอะไร</td><td><b>${esc(k.help.fix)}</b></td></tr>
+                </tbody></table>`;
+        }
+        h += `</div>`;
+      }
+    }
+    if ((j.characters || []).length) {
+      h += `<h4 style="margin:14px 0 4px">ตัวเลขที่กฎใช้ตัดสิน (ต่อตัวละคร)</h4>
+            <table class="tbl"><thead><tr><th>ตัวละคร</th><th class="num">เลเวล</th><th class="num">เส้นฐาน</th>
+              <th class="num">ประวัติพาไปได้</th><th class="num">ฆ่าสะสม</th><th class="num">มีประวัติ</th><th>สรุป</th></tr></thead><tbody>`;
+      for (const c of j.characters) {
+        const ok = c.level <= c.reach + 2;
+        h += `<tr><td>${esc(c.name)}</td><td class="num">${fmt(c.level)}</td><td class="num">${fmt(c.baseline)}</td>
+              <td class="num">${fmt(c.reach)}</td><td class="num">${fmt(c.kills)}</td><td class="num">${fmt(c.hist_total)}</td>
+              <td>${ok ? '<span style="color:#7fd48a">ผ่าน</span>' : '<span style="color:#ff8a8a">เลเวลสูงกว่าที่ประวัติรองรับ</span>'}</td></tr>`;
+      }
+      h += `</tbody></table><p class="sub">เส้นฐาน = เลเวลที่เซิร์ฟเวอร์รับไว้แล้ว ไม่ต้องอธิบายซ้ำ · กฎเผื่อให้อีก 2 เลเวล</p>`;
+    }
+    const pg = j.progress;
+    h += `<h4 style="margin:14px 0 4px">ระเบียนความก้าวหน้า (ที่ด่านกันโกงใช้เทียบ)</h4>`;
+    h += pg
+      ? `<table class="tbl"><tbody>
+           <tr><td style="width:190px">เลเวล / เงิน / EXP</td><td>${fmt(pg.level)} · ${fmt(pg.gold)} · ${fmt(pg.exp)}</td></tr>
+           <tr><td>ฆ่าสะสม / บอส</td><td>${fmt(pg.kills)} · ${fmt(pg.bosses)}</td></tr>
+           <tr><td>ชั่วโมงที่เล่นจริง</td><td>${fmt(pg.hours_played)} ชั่วโมง (เห็นครั้งแรก ${tt(pg.first_seen)})</td></tr>
+           <tr><td>เส้นฐานรายตัวละคร</td><td>${esc(Object.entries(pg.baselines || {}).map(([k, v]) => k + " = " + v).join(" · ") || "—")}</td></tr>
+           <tr><td>บันทึกล่าสุด</td><td>${tt(pg.at)}</td></tr>
+         </tbody></table>`
+      : `<p class="sub">—</p>`;
+    h += `<p class="sub">${esc(j.progress_note || "")}</p>`;
+    if ((j.events || []).length) {
+      h += `<h4 style="margin:14px 0 4px">ประวัติการชนกฎ (ใหม่สุดก่อน · เก็บ 20 ครั้งล่าสุด)</h4>
+            <table class="tbl"><thead><tr><th>เมื่อ</th><th>ชนิด</th><th>นับธง</th><th>เหตุผลเต็ม</th></tr></thead><tbody>`;
+      for (const e of j.events) {
+        h += `<tr><td>${tt(e.at)}</td><td>${esc((e.kinds || []).join(" · ") || "—")}</td>
+              <td>${e.hard ? '<span class="badge">นับ</span>' : '<span class="sub">ไม่นับ</span>'}</td>
+              <td>${esc((e.reasons || []).join(" · "))}</td></tr>`;
+      }
+      h += `</tbody></table>`;
+    }
+    $("#bw-out").innerHTML = h;
+  }
+  async function loadBanWhy(u) {
+    $("#bw-user").value = u;
+    $("#bw-out").innerHTML = '<p class="sub">กำลังโหลด…</p>';
+    try { drawBanWhy(await call("banwhy", { user: u })); }
+    catch (err) { $("#bw-out").innerHTML = ""; toast("ดูรายละเอียดไม่สำเร็จ: " + err.message); }
+  }
+  $("#bw-go").onclick = () => {
+    const u = $("#bw-user").value.trim();
+    if (!u) return toast("ใส่ชื่อบัญชีก่อน");
+    loadBanWhy(u);
+  };
+
+  // ---------- v80.26: ล้างข้อมูลผู้เล่นทีละส่วน ----------
+  function rpOpts(dry) {
+    return { user: $("#rp-user").value.trim(), dry_run: dry,
+      flags: $("#rp-flags").checked, unban: $("#rp-unban").checked, rebase: $("#rp-rebase").checked,
+      level: $("#rp-level").checked, items: $("#rp-items").checked, fresh: $("#rp-fresh").checked };
+  }
+  function drawReset(j) {
+    let h = `<div class="card box" style="margin:10px 0${j.dry_run ? "" : ";border-color:#2b7a3a"}">`;
+    h += `<b>${j.dry_run ? "ดูก่อน — ยังไม่ได้แก้อะไร" : "ล้างเรียบร้อย"}</b> (${esc(j.user)})`;
+    h += `<ul style="margin:8px 0 0 18px">` + (j.did || []).map((d) => `<li>${esc(d)}</li>`).join("") + `</ul>`;
+    if ((j.warn || []).length)
+      h += `<p style="color:#ffcc70;margin-top:8px">⚠ ` + (j.warn || []).map(esc).join("<br>⚠ ") + `</p>`;
+    h += `<p class="sub" style="margin-top:8px">${esc(j.note || "")}</p></div>`;
+    $("#rp-out").innerHTML = h;
+  }
+  $("#rp-dry").onclick = async () => {
+    const o = rpOpts(true);
+    if (!o.user) return toast("ใส่ชื่อบัญชีก่อน");
+    try { drawReset(await call("resetplayer", o)); } catch (err) { toast("ไม่สำเร็จ: " + err.message); }
+  };
+  $("#rp-go").onclick = async () => {
+    const o = rpOpts(false);
+    if (!o.user) return toast("ใส่ชื่อบัญชีก่อน");
+    if (!confirm('ล้างข้อมูลของ "' + o.user + '" ตามที่ติ๊กไว้? (แก้จริง เอาคืนไม่ได้)')) return;
+    try {
+      drawReset(await call("resetplayer", o));
+      toast("ล้างข้อมูลของ " + o.user + " แล้ว");
+      await loadBans();
+      if ($("#bw-user").value.trim().toLowerCase() === o.user.toLowerCase()) await loadBanWhy(o.user);
+    } catch (err) { toast("ไม่สำเร็จ: " + err.message); }
+  };
 
   // ---------- v78.6: ล้างเซิร์ฟเวอร์ ----------
   function wipeRows(j) {
