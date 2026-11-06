@@ -211,6 +211,7 @@
     <button data-p="pay">เติมเงิน <span class="badge" id="b-pay">0</span></button>
     <button data-p="dups">ไอเทมซ้ำ <span class="badge" id="b-dups">0</span></button>
     <button data-p="boss">สถิติบอส <span class="badge" id="b-boss">0</span></button>
+    <button data-p="builds">บิลด์ & บาลานซ์ <span class="badge" id="b-builds">0</span></button>
     <button data-p="ban">โกง & แบน <span class="badge" id="b-ban">0</span></button>
     <button data-p="danger">ล้างเซิร์ฟเวอร์</button>
   </nav>
@@ -357,6 +358,28 @@
     </section>
 
     <!-- ---------- v79.2: ธงกันโกง + ระงับบัญชี ---------- -->
+    <!-- ---------- v80.72: บิลด์ & บาลานซ์ ---------- -->
+    <section class="page" id="p-builds">
+      <div class="card box">
+        <h2>บิลด์ของผู้เล่น</h2>
+        <p class="sub">ใครเล่นคลาสอะไร ลงโหนดไหน ใส่ของอะไร — ใช้ดูว่าอะไรแรงเกิน/อ่อนเกิน
+          (ดึงจากเซฟล่าสุดของทุกบัญชี นับเฉพาะตัวละครที่เลเวลถึงเกณฑ์)</p>
+        <div class="toolbar">
+          <label class="muted" style="font-size:13px">นับตัวละครตั้งแต่เลเวล</label>
+          <select id="bMinLv">
+            <option value="1">1 (ทุกตัว)</option>
+            <option value="10" selected>10</option>
+            <option value="30">30</option>
+            <option value="60">60</option>
+            <option value="80">80</option>
+          </select>
+          <button class="btn small" id="bLoad">↻ ดึงข้อมูลบิลด์</button>
+          <span class="count" id="bCount"></span>
+        </div>
+        <div id="bBody"><div class="empty">กด "ดึงข้อมูลบิลด์" เพื่อเริ่ม</div></div>
+      </div>
+    </section>
+
     <section class="page" id="p-ban">
       <div class="card box">
         <h2>ระงับบัญชี</h2>
@@ -821,6 +844,90 @@
   }
   $("#logout").onclick = () => logout("");
 
+
+  // ---------- v80.72: บิลด์ & บาลานซ์ ----------
+  const RAR_CLS = (r) => "rar-" + String(r || "normal");
+  function bar(pct) {
+    const w = Math.max(0, Math.min(100, Number(pct) || 0));
+    return `<span style="display:inline-block;width:70px;height:7px;background:#2a2e36;border-radius:4px;vertical-align:middle;margin-right:6px">
+      <span style="display:block;width:${w}%;height:100%;background:var(--gold);border-radius:4px"></span></span>`;
+  }
+  /** กล่องบิลด์ของตัวละคร 1 ตัว (ใช้ทั้งในลิ้นชักผู้เล่นและหน้าบิลด์) */
+  function buildCard(b) {
+    if (!b) return "";
+    const eq = b.equipment.length
+      ? `<div class="tbl-wrap"><table class="mini"><thead><tr><th>ช่อง</th><th>ไอเทม</th><th>ระดับ</th><th class="hide-sm">ออฟชั่น</th></tr></thead><tbody>${
+          b.equipment.map((it) => `<tr><td class="muted">${esc(it.slot_name)}</td>
+            <td class="${RAR_CLS(it.rarity)}"><b>${esc(it.name)}</b>${it.req_level ? ` <span class="muted">Lv ${it.req_level}</span>` : ""}</td>
+            <td class="${RAR_CLS(it.rarity)}">${esc(it.rarity_name)}</td>
+            <td class="hide-sm muted" style="font-size:12px">${esc(it.stats || "—")}</td></tr>`).join("")
+        }</tbody></table></div>` : '<div class="muted" style="font-size:13px">ยังไม่ได้สวมอะไรเลย</div>';
+    const asc = b.asc_nodes.length
+      ? b.asc_nodes.map((n) => `<span class="chip"${n.notable ? ' style="border-color:var(--gold);color:var(--gold)"' : ""}>${esc(n.name)}</span>`).join("")
+      : '<span class="muted" style="font-size:13px">ยังไม่ลงโหนดคลาสเสริม</span>';
+    const pas = b.passive_notables.length
+      ? b.passive_notables.map((n) => `<span class="chip">${esc(n.name || n.id)}</span>`).join("")
+      : '<span class="muted" style="font-size:13px">ยังไม่มีโหนดเด่น</span>';
+    const at = ["str", "dex", "int", "luk", "vit"].filter((k) => Number(b.alloc[k] || 0) > 0)
+      .map((k) => `${k.toUpperCase()} ${Number(b.alloc[k] || 0)}`).join(" / ") || "ยังไม่แจกแต้ม";
+    return `<div class="stats">
+        <span>คลาสเสริม <b>${esc(b.tribe_name)}</b></span>
+        <span>บททดสอบที่ผ่าน <b>${b.tiers.length ? b.tiers.join(", ") : "—"}</b></span>
+        <span>แต้มคลาสเหลือ <b>${b.tribe_points_left}</b></span>
+        <span>โหนดต้นไม้ <b>${b.passive_count}</b></span>
+        <span>รูน <b>${b.runes_placed}</b> (ถุง ${b.runes_bag})</span>
+        <span>แต้มสถานะ <b>${esc(at)}</b></span>
+      </div>
+      <h4 style="margin:10px 0 4px">โหนดคลาสเสริม (${b.asc_nodes.length})</h4>${asc}
+      <h4 style="margin:10px 0 4px">โหนดเด่นในต้นไม้พรสวรรค์ (${b.passive_notables.length} จาก ${b.passive_count})</h4>${pas}
+      <h4 style="margin:10px 0 4px">ของที่สวมอยู่ (${b.equipment.length}/10)${b.empty_slots.length ? ` <span class="muted" style="font-weight:400;font-size:12px">ว่าง: ${esc(b.empty_slots.join(", "))}</span>` : ""}</h4>${eq}`;
+  }
+
+  async function loadBuilds() {
+    const lv = Number($("#bMinLv").value) || 10;
+    $("#bBody").innerHTML = `<div class="empty">กำลังรวบรวม…</div>`;
+    try {
+      const d = await call("builds", { min_level: lv });
+      $("#b-builds").textContent = d.counted;
+      $("#bCount").textContent = `นับ ${fmt(d.counted)} ตัวละคร จากทั้งหมด ${fmt(d.total_characters)} ตัว (เลเวล ${d.min_level}+)`;
+      let h = "";
+      h += `<h4>คลาสเสริมที่คนเล่น</h4><div class="tbl-wrap"><table class="mini"><thead><tr><th>คลาส</th><th class="r">คน</th><th>สัดส่วน</th><th class="r">เลเวลเฉลี่ย</th></tr></thead><tbody>${
+        d.tribes.map((t) => `<tr><td><b>${esc(t.name)}</b></td><td class="r num">${t.count}</td><td>${bar(t.share)}<span class="num">${t.share}%</span></td><td class="r num">${t.avg_level}</td></tr>`).join("")
+      }</tbody></table></div>`;
+      h += `<h4>โหนดคลาสเสริม — ใครเล่นสายนี้ลงโหนดไหนบ้าง</h4>`;
+      h += d.ascendancy.length ? d.ascendancy.map((t) => `<details><summary>${esc(t.name)} — ${t.players} คน · ไม่มีใครลง ${t.never.length} โหนด</summary>
+        <div class="tbl-wrap"><table class="mini"><thead><tr><th>โหนด</th><th class="r">คนลง</th><th>อัตราการเลือก</th></tr></thead><tbody>${
+          t.nodes.map((n) => `<tr><td${n.notable ? ' style="color:var(--gold)"' : ""}>${esc(n.name)} <span class="muted">${esc(n.id)}</span></td><td class="r num">${n.count}</td><td>${bar(n.pick)}<span class="num">${n.pick}%</span></td></tr>`).join("")
+        }</tbody></table></div>
+        ${t.never.length ? `<div style="margin:6px 0"><span class="muted" style="font-size:13px">ไม่มีใครลงเลย:</span> ${t.never.map((n) => `<span class="chip"${n.notable ? ' style="border-color:#c66"' : ""}>${esc(n.name)}</span>`).join("")}</div>` : ""}
+      </details>`).join("") : '<div class="muted" style="font-size:13px">ยังไม่มีใครเลือกคลาสเสริม</div>';
+      h += `<h4>โหนดเด่นในต้นไม้พรสวรรค์ที่คนลงเยอะสุด</h4><div class="tbl-wrap"><table class="mini"><thead><tr><th>โหนด</th><th>สาย</th><th class="r">คนลง</th><th>อัตรา</th></tr></thead><tbody>${
+        d.passives.map((n) => `<tr><td>${esc(n.name || n.id)}</td><td class="muted">${esc(n.branch)}</td><td class="r num">${n.count}</td><td>${bar(n.pick)}<span class="num">${n.pick}%</span></td></tr>`).join("") || '<tr><td class="muted">ไม่มีข้อมูล</td></tr>'
+      }</tbody></table></div>`;
+      h += `<h4>ของที่ใส่กันเยอะที่สุด (แยกตามช่อง)</h4><div class="tbl-wrap"><table class="mini"><thead><tr><th>ช่อง</th><th>มีคนใส่</th><th>ของยอดนิยม</th></tr></thead><tbody>${
+        d.slots.map((s2) => `<tr><td><b>${esc(s2.name)}</b></td><td>${bar(s2.worn_pct)}<span class="num">${s2.worn_pct}%</span></td>
+          <td>${s2.top.map((i) => `<span class="chip ${RAR_CLS(i.rarity)}">${esc(i.name)} ×${i.count}</span>`).join("")}</td></tr>`).join("") || '<tr><td class="muted">ไม่มีข้อมูล</td></tr>'
+      }</tbody></table></div>`;
+      h += `<h4>ยูนิค / สายรุ้ง ที่ถูกใส่จริง</h4>${
+        d.uniques.length ? d.uniques.map((u) => `<span class="chip ${RAR_CLS(u.rarity)}">${esc(u.name)} ×${u.count}</span>`).join("") : '<div class="muted" style="font-size:13px">ยังไม่มีใครใส่ของยูนิค</div>'}`;
+      h += `<h4>การแจกแต้มสถานะเฉลี่ย (ต่อคลาส)</h4><div class="tbl-wrap"><table class="mini"><thead><tr><th>คลาส</th><th class="r">คน</th><th class="r">STR</th><th class="r">DEX</th><th class="r">INT</th><th class="r">LUK</th><th class="r">VIT</th></tr></thead><tbody>${
+        d.attributes.map((a) => `<tr><td>${esc(a.name)}</td><td class="r num">${a.n}</td>${["str", "dex", "int", "luk", "vit"].map((k) => `<td class="r num">${a.avg[k]}</td>`).join("")}</tr>`).join("")
+      }</tbody></table></div>`;
+      h += `<h4>ตัวละครเลเวลสูงสุด 30 อันดับ</h4><div class="tbl-wrap"><table class="mini"><thead><tr><th>บัญชี</th><th>ตัวละคร</th><th class="r">Lv</th><th>คลาส</th><th class="r">โหนดคลาส</th><th class="r">โหนดต้นไม้</th><th class="hide-sm">โหนดเด่น</th></tr></thead><tbody>${
+        d.top_builds.map((b2) => `<tr><td><a href="#" data-open="${esc(b2.user)}">${esc(b2.user)}</a></td><td>${esc(b2.name)}</td><td class="r num">${b2.level}</td>
+          <td class="muted">${esc(b2.tribe_name)}</td><td class="r num">${b2.asc}</td><td class="r num">${b2.passives}</td>
+          <td class="hide-sm muted" style="font-size:12px">${esc((b2.notables || []).join(", "))}</td></tr>`).join("")
+      }</tbody></table></div>`;
+      $("#bBody").innerHTML = h;
+    } catch (err) { $("#bBody").innerHTML = `<div class="empty">โหลดไม่ได้: ${esc(err.message)}</div>`; }
+  }
+  $("#bLoad").onclick = loadBuilds;
+  $("#bMinLv").onchange = loadBuilds;
+  $("#bBody").addEventListener("click", (e) => {
+    const a = e.target.closest("[data-open]"); if (!a) return;
+    e.preventDefault(); openPlayer(a.dataset.open);
+  });
+
   // ---------- แท็บ ----------
   $("#tabs").addEventListener("click", (e) => {
     const b = e.target.closest("button"); if (!b) return;
@@ -1021,7 +1128,8 @@
             <span>STR/DEX/INT/LUK ที่ลง <b>${["str", "dex", "int", "luk"].map((k) => Number(c.alloc[k] || 0)).join(" / ")}</b></span>
           </div>
           ${c.quests.length ? `<div style="display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px;margin-bottom:6px">${c.quests.map((q) => `<span>${esc(q.title)} ${QS[q.state] || ""}</span>`).join("")}</div>` : '<div class="muted" style="font-size:13px">ยังไม่รับเควส</div>'}
-          <details><summary>ไอเทม ${c.items.length} ชิ้น</summary>${itemTable(c.items, true)}</details>
+          ${buildCard(c.build)}
+          <details><summary>ไอเทมทั้งหมด ${c.items.length} ชิ้น (รวมในกระเป๋า/คอสตูม)</summary>${itemTable(c.items, true)}</details>
           <details><summary>ข้อมูลดิบ (JSON)</summary><div style="text-align:right;margin:4px 0"><button class="btn small" data-copy="${esc(JSON.stringify(c.raw))}">คัดลอก</button></div><pre class="json">${esc(JSON.stringify(c.raw, null, 2))}</pre></details>
         </div>`;
       }
