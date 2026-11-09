@@ -1,0 +1,8 @@
+{
+  "name": "siege-of-fate",
+  "version": "28.1.0",
+  "private": true,
+  "description": "Siege of Fate - web build (Godot 4.5 HTML5) + online room list API",
+  "type": "module",
+  "engines": { "node": ">=18" }
+}
