@@ -93,7 +93,105 @@ body {
 		<link id="-gd-engine-icon" rel="icon" type="image/png" href="index.icon.png" />
 <link rel="apple-touch-icon" href="index.apple-touch-icon.png"/>
 
-	</head>
+	<!-- v81.42: ขอ "การ์ดจอตัวแรง" ตอนเบราว์เซอร์สร้าง WebGL context + ตรวจว่าได้ตัวไหนมาจริง
+     ไฟล์นี้ถูกแทรกไว้ใน <head> ของ index.html ตอน build โดย tools/build_web.sh
+     ต้องอยู่ "ก่อน" index.js เพราะต้องครอบ getContext ให้ทันก่อน Godot เรียกใช้
+
+     ข้อเท็จจริงที่ต้องรู้ (อย่าคาดหวังเกินจริง):
+       - Mac สองการ์ด / Firefox : powerPreference ได้ผล -> ได้การ์ดแยกเลย
+       - Chrome/Edge บน Windows : ไม่สนใจ powerPreference (crbug.com/369219127)
+                                   เบราว์เซอร์ทั้งตัวผูกกับการ์ดจอตัวแรกที่ Windows ให้ (GPU 0)
+                                   -> ต้องให้เจ้าของเครื่องตั้งที่ Windows เอง (ดู gpu_help.html)
+     เพราะงั้นไฟล์นี้ทำสองหน้าที่: ขอให้ได้มากที่สุดเท่าที่ทำได้ แล้ว "ตรวจแล้วบอก" ที่เหลือ -->
+<script>
+(function () {
+	"use strict";
+	var GL = { "webgl": 1, "webgl2": 1, "experimental-webgl": 1, "experimental-webgl2": 1 };
+
+	// ======================= 1) ขอการ์ดจอตัวแรงทุกครั้งที่มีการขอ WebGL =======================
+	// Godot เรียก canvas.getContext("webgl2", attrs) ผ่าน Emscripten โดยไม่ตั้ง powerPreference
+	// (ค่าปริยาย "default" = เบราว์เซอร์เลือกตัวประหยัดไฟ) -> เติมให้เอง ไม่ต้องแก้ไฟล์ที่ export ออกมา
+	function boost(attrs) {
+		var a = {}, k;
+		if (attrs) { for (k in attrs) { a[k] = attrs[k]; } }
+		if (!a.powerPreference || a.powerPreference === "default") { a.powerPreference = "high-performance"; }
+		// ไม่ให้เบราว์เซอร์ปฏิเสธ context เพราะ "เครื่องนี้เรนเดอร์ช้า" — ยอมช้าดีกว่าเปิดเกมไม่ได้
+		if (a.failIfMajorPerformanceCaveat == null) { a.failIfMajorPerformanceCaveat = false; }
+		return a;
+	}
+	function patch(proto) {
+		if (!proto || typeof proto.getContext !== "function" || proto.getContext.__sof) { return; }
+		var nat = proto.getContext;
+		function wrapped(type, attrs) {
+			if (GL[type]) { return nat.call(this, type, boost(attrs)); }
+			return nat.apply(this, arguments);
+		}
+		wrapped.__sof = 1;
+		try { proto.getContext = wrapped; } catch (e) { /* บางเบราว์เซอร์ล็อก prototype ไว้ */ }
+	}
+	patch(window.HTMLCanvasElement && HTMLCanvasElement.prototype);
+	patch(window.OffscreenCanvas && OffscreenCanvas.prototype);
+
+	// ======================= 2) ตรวจว่าสุดท้ายได้การ์ดจอตัวไหนมา =======================
+	// สร้าง context ชั่วคราว 1x1 สองตัว (ขอตัวแรง / ขอตัวประหยัด) แล้วอ่านชื่อผู้เรนเดอร์จริง
+	// ถ้าสองตัวได้ชื่อไม่เหมือนกัน = เบราว์เซอร์ยอมสลับการ์ดให้ (เราได้ตัวแรงแน่นอน)
+	// ถ้าเหมือนกัน = เบราว์เซอร์มีให้ใช้ตัวเดียว (หรือ Chrome/Windows ที่ไม่ยอมสลับ)
+	function probe(pref) {
+		var out = { renderer: "", vendor: "" };
+		try {
+			var c = document.createElement("canvas");
+			c.width = 1; c.height = 1;
+			var o = { powerPreference: pref, failIfMajorPerformanceCaveat: false,
+				depth: false, stencil: false, antialias: false, alpha: false };
+			var gl = c.getContext("webgl2", o) || c.getContext("webgl", o);
+			if (!gl) { return out; }
+			var dbg = gl.getExtension("WEBGL_debug_renderer_info");
+			if (dbg) {
+				out.renderer = String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) || "");
+				out.vendor = String(gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL) || "");
+			}
+			if (!out.renderer) { out.renderer = String(gl.getParameter(gl.RENDERER) || ""); }
+			// คืน context ทิ้งทันที — เบราว์เซอร์จำกัดจำนวน context ที่เปิดพร้อมกันไว้ (~16)
+			var lose = gl.getExtension("WEBGL_lose_context");
+			if (lose) { lose.loseContext(); }
+		} catch (e) { /* ไม่มี WebGL -> webgl_help.html จัดการกรณีนั้นอยู่แล้ว */ }
+		return out;
+	}
+
+	// แยกประเภทจากชื่อผู้เรนเดอร์ — ลำดับสำคัญ (การ์ดแยกต้องเช็กก่อน เพราะชื่อมีคำว่า intel/radeon ปนอยู่)
+	function classify(name) {
+		var s = String(name || "").toLowerCase();
+		if (!s) { return "unknown"; }
+		if (/swiftshader|llvmpipe|softpipe|software|basic render|mesa offscreen|generic renderer/.test(s)) { return "software"; }
+		if (/apple m\d|apple gpu/.test(s)) { return "apple"; }                       // Apple Silicon ไม่มีปัญหานี้
+		if (/adreno|mali|powervr|xclipse|immortalis/.test(s)) { return "mobile"; }     // มือถือ/แท็บเล็ต
+		if (/nvidia|geforce|\brtx\b|\bgtx\b|quadro|tesla|radeon rx|radeon pro|radeon r9|radeon r7|firepro|\barc\b|a7[57]0|a3[80]0/.test(s)) { return "discrete"; }
+		if (/intel|uhd graphics|hd graphics|iris|radeon\(tm\) graphics|radeon graphics|vega \d|gfx90|gfx10/.test(s)) { return "integrated"; }
+		return "unknown";
+	}
+
+	var hi = probe("high-performance");
+	var lo = probe("low-power");
+	var g = {
+		renderer: hi.renderer,            // ชื่อการ์ดจอ/ไดรเวอร์ที่เกมจะได้ใช้จริง
+		vendor: hi.vendor,
+		low_power: lo.renderer,           // ตัวที่ได้ถ้าขอ "ประหยัดไฟ"
+		kind: classify(hi.renderer),      // software | integrated | discrete | apple | mobile | unknown
+		switched: !!(hi.renderer && lo.renderer && hi.renderer !== lo.renderer),
+		// true = น่าจะยังมีการ์ดจอตัวแรงกว่านี้ในเครื่อง แต่เบราว์เซอร์ไม่ยอมสลับให้
+		stuck: false
+	};
+	// Chrome/Edge บน Windows ผูกการ์ดจอทั้งเบราว์เซอร์ -> ขอแรงก็ได้ตัวเดิม
+	g.stuck = (g.kind === "integrated" || g.kind === "software") && !g.switched;
+	window.SOF_GPU = g;
+	try {
+		console.log("[SOF] การ์ดจอที่เบราว์เซอร์ให้: " + (g.renderer || "(ไม่ทราบ)") +
+			"  | ประเภท: " + g.kind + "  | ขอประหยัดไฟได้: " + (g.low_power || "-") +
+			"  | สลับการ์ดได้: " + g.switched);
+	} catch (e) {}
+})();
+</script>
+</head>
 	<body>
 		<canvas id="canvas">
 			Your browser does not support the canvas tag.
@@ -109,9 +207,9 @@ body {
 			<div id="status-notice"></div>
 		</div>
 
-		<script src="index.js?v=54a8c55999"></script>
+		<script src="index.js?v=2ff70454f2"></script>
 		<script>
-const GODOT_CONFIG = {"mainPack":"index.pck?v=54a8c55999","args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":90791688,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
+const GODOT_CONFIG = {"mainPack":"index.pck?v=2ff70454f2","args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":90800392,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
 
@@ -285,6 +383,193 @@ const engine = new Engine(GODOT_CONFIG);
 			if ((notice.textContent || "").indexOf("WebGL2") >= 0) show();
 		}).observe(notice, { childList: true, characterData: true, subtree: true });
 	}
+})();
+</script>
+<!-- v81.42: แผงบอกวิธี "ให้เบราว์เซอร์ใช้การ์ดจอ" — ขึ้นเมื่อเกมได้ CPU/การ์ดจอออนบอร์ดมาเรนเดอร์
+     ต่างจาก webgl_help.html ที่ใช้กรณี "เปิด WebGL2 ไม่ได้เลย" — อันนี้คือเปิดได้แต่ช้าเพราะไม่ได้ใช้การ์ดจอ
+     ไฟล์นี้ถูกแทรกก่อน </body> ของ index.html ตอน build โดย tools/build_web.sh
+     ข้อมูลการ์ดจอมาจาก window.SOF_GPU ที่ tools/web/gpu_pref.html ตรวจไว้ตอนโหลดหน้า
+
+     เปิดแผงได้ 3 ทาง: ขึ้นเองตอนโหลด (เฉพาะกรณีเรนเดอร์ด้วย CPU), ปุ่มใน ตั้งค่า > กราฟิก,
+     และเกมเรียกให้เองเมื่อเฟรมตกหนัก (window.SOF_GPU_SHOW) -->
+<style>
+#sof-gpu-help {
+	display: none; position: fixed; inset: 0; z-index: 99998;
+	background: #0b0710ee; color: #e9e2f5; overflow: auto;
+	font-family: system-ui, "Segoe UI", "Noto Sans Thai", sans-serif;
+	align-items: center; justify-content: center; padding: 24px;
+}
+#sof-gpu-help .box {
+	max-width: 660px; width: 100%; background: #1a1026;
+	border: 2px solid #6b4ea8; border-radius: 10px; padding: 22px 26px;
+	box-shadow: 0 0 40px #000a;
+}
+#sof-gpu-help h2 { margin: 0 0 6px; font-size: 20px; color: #ffd84a; }
+#sof-gpu-help p.sub { margin: 0 0 14px; font-size: 14px; color: #b3a7c9; line-height: 1.6; }
+#sof-gpu-help .card {
+	background: #130c1d; border: 1px solid #3a2a52; border-radius: 7px;
+	padding: 10px 14px; margin: 0 0 14px; font-size: 13px; line-height: 1.7;
+}
+#sof-gpu-help .card b { color: #9fe3ff; }
+#sof-gpu-help .card .bad { color: #ff8e8e; }
+#sof-gpu-help .card .good { color: #8ee89a; }
+#sof-gpu-help h3 { margin: 16px 0 6px; font-size: 15px; color: #ffd84a; }
+#sof-gpu-help ol { margin: 0 0 10px; padding-left: 20px; line-height: 1.8; font-size: 14px; }
+#sof-gpu-help code {
+	background: #2a1b3d; border: 1px solid #44305f; border-radius: 4px;
+	padding: 1px 6px; font-size: 13px; color: #9fe3ff; user-select: all;
+}
+#sof-gpu-help .note {
+	font-size: 13px; color: #b3a7c9; line-height: 1.7;
+	border-top: 1px solid #3a2a52; padding-top: 12px; margin-top: 14px;
+}
+#sof-gpu-help .btn {
+	display: inline-block; margin: 14px 8px 0 0; background: #6b4ea8; color: #fff;
+	border: 0; border-radius: 6px; padding: 9px 18px; font-size: 14px; cursor: pointer;
+	font-family: inherit;
+}
+#sof-gpu-help .btn:hover { background: #8162c7; }
+#sof-gpu-help .btn.ghost { background: #2a1b3d; border: 1px solid #44305f; }
+#sof-gpu-help .btn.ghost:hover { background: #3a2750; }
+#sof-gpu-help .hide { display: none; }
+</style>
+<div id="sof-gpu-help">
+	<div class="box">
+		<h2 id="sof-gpu-title">เกมยังไม่ได้ใช้การ์ดจอของเครื่องนี้</h2>
+		<p class="sub" id="sof-gpu-sub"></p>
+		<div class="card">
+			ตัวที่เรนเดอร์อยู่จริง: <b id="sof-gpu-name">-</b><br>
+			<span id="sof-gpu-verdict"></span>
+		</div>
+
+		<div id="sof-gpu-sec-sw" class="hide">
+			<h3>1. เปิดการเร่งความเร็วกราฟิกในเบราว์เซอร์</h3>
+			<ol>
+				<li>Chrome: <code>chrome://settings/system</code> &nbsp; Edge: <code>edge://settings/system</code></li>
+				<li>เปิด <b>“ใช้การเร่งความเร็วกราฟิกเมื่อพร้อมใช้งาน”</b> (Use graphics acceleration when available) แล้วปิดเปิดเบราว์เซอร์ใหม่</li>
+				<li>เช็กผล: <code>chrome://gpu</code> บรรทัด <b>WebGL2</b> ต้องขึ้น <i>Hardware accelerated</i></li>
+				<li>ถ้ายังไม่ขึ้น: <code>chrome://flags</code> ค้นคำว่า <b>ignore-gpu-blocklist</b> ตั้ง <b>Enabled</b> แล้วกด Relaunch</li>
+			</ol>
+		</div>
+
+		<div id="sof-gpu-sec-igpu" class="hide">
+			<h3 id="sof-gpu-sec-igpu-h">ตั้งให้ Windows ส่งเบราว์เซอร์ไปใช้การ์ดจอแยก</h3>
+			<ol>
+				<li>คลิกขวาที่หน้าจอ &gt; <b>การตั้งค่าการแสดงผล</b> (Display settings) &gt; <b>กราฟิก</b> (Graphics)
+					<br><span style="color:#b3a7c9">Windows 11: การตั้งค่า &gt; ระบบ &gt; จอแสดงผล &gt; กราฟิก &nbsp;|&nbsp; Windows 10: การตั้งค่ากราฟิก</span></li>
+				<li>กด <b>เพิ่มแอปเดสก์ท็อป</b> แล้วเลือกไฟล์เบราว์เซอร์ที่ใช้เล่น
+					<br><code>C:\Program Files\Google\Chrome\Application\chrome.exe</code></li>
+				<li>กดที่รายการนั้น &gt; <b>ตัวเลือก</b> &gt; เลือก <b>ประสิทธิภาพสูง</b> (High performance) &gt; บันทึก</li>
+				<li><b>ปิดเบราว์เซอร์ให้หมดทุกหน้าต่าง</b> แล้วเปิดใหม่ (ไม่ปิดหมด ค่าจะไม่เปลี่ยน) แล้วเข้าเกมอีกครั้ง</li>
+			</ol>
+			<p class="sub" style="margin:0">
+				การ์ด NVIDIA ตั้งซ้ำอีกชั้นได้: คลิกขวาหน้าจอ &gt; <b>NVIDIA Control Panel</b> &gt;
+				จัดการการตั้งค่า 3D &gt; การตั้งค่าโปรแกรม &gt; เลือกเบราว์เซอร์ &gt;
+				โปรเซสเซอร์กราฟิก = <b>ตัวประมวลผล NVIDIA ประสิทธิภาพสูง</b>
+			</p>
+		</div>
+
+		<p class="note">
+			ทำไมเกมสั่งให้เองไม่ได้: หน้าเว็บขอได้แค่ “ขอการ์ดจอตัวแรง” ซึ่งเกมขอไปให้แล้วทุกครั้ง
+			แต่ Chrome/Edge บน Windows ผูกการ์ดจอไว้ทั้งเบราว์เซอร์ตั้งแต่เปิดโปรแกรม จึงไม่สลับตามคำขอของหน้าเว็บ
+			— สวิตช์จริงอยู่ที่ Windows เท่านั้น (Firefox กับ Mac สลับตามคำขอให้เอง)<br>
+			เล่นต่อได้เลยถ้าไม่สะดวกตั้งตอนนี้ แต่ถ้าแลคมาก ลองลดที่ <b>ตั้งค่า &gt; กราฟิก &gt; คุณภาพกราฟิก</b> เป็น “ต่ำ” ช่วยได้อีกทาง
+		</p>
+
+		<button class="btn" id="sof-gpu-close">เล่นต่อ</button>
+		<button class="btn ghost" id="sof-gpu-copy">คัดลอกข้อมูลเครื่อง</button>
+		<button class="btn ghost" id="sof-gpu-never">ไม่ต้องเตือนอีก</button>
+	</div>
+</div>
+<script>
+(function () {
+	"use strict";
+	var SEEN = "sof_gpu_dismissed_v1";
+	var el = document.getElementById("sof-gpu-help");
+	if (!el) { return; }
+
+	function q(id) { return document.getElementById(id); }
+	function store(k, v) { try { window.localStorage.setItem(k, v); } catch (e) {} }
+	function load(k) { try { return window.localStorage.getItem(k); } catch (e) { return null; } }
+
+	function fill() {
+		var g = window.SOF_GPU || { renderer: "", kind: "unknown", stuck: false };
+		q("sof-gpu-name").textContent = g.renderer || "(เบราว์เซอร์ไม่บอกชื่อ)";
+		var sw = (g.kind === "software");
+		q("sof-gpu-sec-sw").className = sw ? "" : "hide";
+		q("sof-gpu-sec-igpu").className = (g.kind === "integrated" || g.kind === "unknown") ? "" : "hide";
+		q("sof-gpu-sec-igpu-h").textContent = sw
+			? "2. ถ้าเป็นโน้ตบุ๊กสองการ์ด ตั้งอีกชั้นด้วย"
+			: "ตั้งให้ Windows ส่งเบราว์เซอร์ไปใช้การ์ดจอแยก";
+		if (sw) {
+			q("sof-gpu-title").textContent = "เบราว์เซอร์กำลังเรนเดอร์ด้วย CPU";
+			q("sof-gpu-sub").textContent = "การเร่งความเร็วกราฟิกถูกปิดอยู่ เกมจะอืดมากจนเล่นไม่ได้ "
+				+ "— ไม่ใช่เกมเสีย เปิดค่านี้แล้วเฟรมจะกลับมาทันที";
+			q("sof-gpu-verdict").innerHTML = '<span class="bad">= ซอฟต์แวร์เรนเดอร์ (ไม่ได้ใช้การ์ดจอเลย)</span>';
+		} else if (g.kind === "integrated") {
+			q("sof-gpu-title").textContent = "เบราว์เซอร์ใช้การ์ดจอออนบอร์ด";
+			q("sof-gpu-sub").textContent = "ถ้าเครื่องนี้มีการ์ดจอแยก (NVIDIA / AMD / Intel Arc) อยู่ด้วย "
+				+ "Windows จะส่งเบราว์เซอร์ไปใช้ตัวออนบอร์ดเพื่อประหยัดไฟ ต้องตั้งเองหนึ่งครั้ง แล้วจะจำไว้ตลอด";
+			q("sof-gpu-verdict").innerHTML = '<span class="bad">= กราฟิกออนบอร์ด</span>'
+				+ (g.stuck ? " — ขอการ์ดตัวแรงไปแล้วแต่เบราว์เซอร์ให้ตัวเดิม" : "");
+		} else {
+			q("sof-gpu-title").textContent = "การ์ดจอใช้งานได้ปกติ";
+			q("sof-gpu-sub").textContent = "เกมได้การ์ดจอมาเรนเดอร์แล้ว ถ้ายังแลคอยู่ สาเหตุน่าจะเป็นอย่างอื่น "
+				+ "— ลองลดคุณภาพกราฟิกที่ ตั้งค่า > กราฟิก หรือกด F9 ดูจอวัดผล";
+			q("sof-gpu-verdict").innerHTML = '<span class="good">= เร่งด้วยฮาร์ดแวร์อยู่</span>';
+		}
+	}
+
+	function show() {
+		fill();
+		el.style.display = "flex";
+	}
+	function hide() {
+		el.style.display = "none";
+		// คืนโฟกัสให้ canvas ไม่งั้นปุ่มคีย์บอร์ดในเกมจะไม่ทำงานต่อ
+		var c = document.getElementById("canvas");
+		if (c && c.focus) { try { c.focus(); } catch (e) {} }
+	}
+
+	q("sof-gpu-close").onclick = hide;
+	q("sof-gpu-never").onclick = function () { store(SEEN, "1"); hide(); };
+	q("sof-gpu-copy").onclick = function () {
+		var g = window.SOF_GPU || {};
+		var txt = [
+			"การ์ดจอที่ได้: " + (g.renderer || "?"),
+			"ผู้ผลิต: " + (g.vendor || "?"),
+			"ประเภท: " + (g.kind || "?"),
+			"ขอประหยัดไฟได้: " + (g.low_power || "?"),
+			"สลับการ์ดได้: " + (g.switched ? "ได้" : "ไม่ได้"),
+			"เบราว์เซอร์: " + navigator.userAgent,
+			"หน้าจอ: " + window.screen.width + "x" + window.screen.height + " @" + (window.devicePixelRatio || 1),
+			"คอร์ซีพียู: " + (navigator.hardwareConcurrency || "?")
+		].join("\n");
+		var btn = this;
+		function done(ok) { btn.textContent = ok ? "คัดลอกแล้ว" : "คัดลอกไม่ได้"; setTimeout(function () { btn.textContent = "คัดลอกข้อมูลเครื่อง"; }, 1600); }
+		if (navigator.clipboard && navigator.clipboard.writeText) {
+			navigator.clipboard.writeText(txt).then(function () { done(true); }, function () { done(false); });
+		} else { done(false); }
+	};
+
+	// เกม (ตั้งค่า > กราฟิก และตัวเตือนเฟรมตก) เรียกผ่านตัวนี้ — force = เปิดแม้กด "ไม่ต้องเตือนอีก" ไว้
+	window.SOF_GPU_SHOW = function (force) {
+		if (!force && load(SEEN) === "1") { return false; }
+		show();
+		return true;
+	};
+
+	// ขึ้นเองตอนโหลด เฉพาะกรณีเรนเดอร์ด้วย CPU — เคสนี้เล่นไม่ได้จริง ไม่บอกคือปล่อยให้เข้าใจว่าเกมเสีย
+	// กรณีออนบอร์ดไม่ขึ้นเอง (เครื่องที่มีแต่ออนบอร์ดก็เล่นได้สบาย) ให้เกมเรียกเมื่อเฟรมตกจริง
+	function autoShow() {
+		var g = window.SOF_GPU;
+		if (!g || g.kind !== "software") { return; }
+		if (load(SEEN) === "1") { return; }
+		show();
+	}
+	if (document.readyState === "loading") {
+		document.addEventListener("DOMContentLoaded", autoShow);
+	} else { autoShow(); }
 })();
 </script>
 </body>
