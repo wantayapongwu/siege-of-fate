@@ -207,9 +207,9 @@ body {
 			<div id="status-notice"></div>
 		</div>
 
-		<script src="index.js?v=2ff70454f2"></script>
+		<script src="index.js?v=2a50daccd2"></script>
 		<script>
-const GODOT_CONFIG = {"mainPack":"index.pck?v=2ff70454f2","args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":90800392,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
+const GODOT_CONFIG = {"mainPack":"index.pck?v=2a50daccd2","args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":90800184,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
 
@@ -444,11 +444,16 @@ const engine = new Engine(GODOT_CONFIG);
 
 		<div id="sof-gpu-sec-sw" class="hide">
 			<h3>1. เปิดการเร่งความเร็วกราฟิกในเบราว์เซอร์</h3>
-			<ol>
-				<li>Chrome: <code>chrome://settings/system</code> &nbsp; Edge: <code>edge://settings/system</code></li>
+			<ol id="sof-gpu-sw-chromium">
+				<li>เปิด <code id="sof-gpu-url-settings">chrome://settings/system</code> (คัดลอกไปวางในช่องที่อยู่เว็บ)</li>
 				<li>เปิด <b>“ใช้การเร่งความเร็วกราฟิกเมื่อพร้อมใช้งาน”</b> (Use graphics acceleration when available) แล้วปิดเปิดเบราว์เซอร์ใหม่</li>
-				<li>เช็กผล: <code>chrome://gpu</code> บรรทัด <b>WebGL2</b> ต้องขึ้น <i>Hardware accelerated</i></li>
-				<li>ถ้ายังไม่ขึ้น: <code>chrome://flags</code> ค้นคำว่า <b>ignore-gpu-blocklist</b> ตั้ง <b>Enabled</b> แล้วกด Relaunch</li>
+				<li>เช็กผล: <code id="sof-gpu-url-gpu">chrome://gpu</code> บรรทัด <b>WebGL2</b> ต้องขึ้น <i>Hardware accelerated</i></li>
+				<li>ถ้ายังไม่ขึ้น: <code id="sof-gpu-url-flags">chrome://flags</code> ค้นคำว่า <b>ignore-gpu-blocklist</b> ตั้ง <b>Enabled</b> แล้วกด Relaunch</li>
+			</ol>
+			<ol id="sof-gpu-sw-firefox" class="hide">
+				<li>เมนู <b>☰</b> &gt; <b>การตั้งค่า</b> (Settings) &gt; <b>ทั่วไป</b> (General) &gt; เลื่อนลงไปหัวข้อ <b>ประสิทธิภาพ</b> (Performance)</li>
+				<li>เอาเครื่องหมายถูกออกจาก <b>“ใช้การตั้งค่าประสิทธิภาพที่แนะนำ”</b> แล้วติ๊ก <b>“ใช้การเร่งด้วยฮาร์ดแวร์เมื่อพร้อมใช้งาน”</b></li>
+				<li>ปิดเปิด Firefox ใหม่ แล้วเช็กผลที่ <code>about:support</code> หัวข้อ <b>Graphics</b> ต้องขึ้น <i>WebGL 2 Driver Renderer</i> เป็นชื่อการ์ดจอจริง</li>
 			</ol>
 		</div>
 
@@ -457,8 +462,9 @@ const engine = new Engine(GODOT_CONFIG);
 			<ol>
 				<li>คลิกขวาที่หน้าจอ &gt; <b>การตั้งค่าการแสดงผล</b> (Display settings) &gt; <b>กราฟิก</b> (Graphics)
 					<br><span style="color:#b3a7c9">Windows 11: การตั้งค่า &gt; ระบบ &gt; จอแสดงผล &gt; กราฟิก &nbsp;|&nbsp; Windows 10: การตั้งค่ากราฟิก</span></li>
-				<li>กด <b>เพิ่มแอปเดสก์ท็อป</b> แล้วเลือกไฟล์เบราว์เซอร์ที่ใช้เล่น
-					<br><code>C:\Program Files\Google\Chrome\Application\chrome.exe</code></li>
+				<li>กด <b>เพิ่มแอปเดสก์ท็อป</b> แล้วเลือกไฟล์ของ<b id="sof-gpu-browser">เบราว์เซอร์ที่ใช้เล่น</b>
+					<br><code id="sof-gpu-exe">C:\Program Files\Google\Chrome\Application\chrome.exe</code>
+					<br><span style="color:#b3a7c9">Windows 11 รุ่นใหม่เลือกจากรายชื่อแอปที่ติดตั้งไว้ได้เลย ไม่ต้องหาไฟล์</span></li>
 				<li>กดที่รายการนั้น &gt; <b>ตัวเลือก</b> &gt; เลือก <b>ประสิทธิภาพสูง</b> (High performance) &gt; บันทึก</li>
 				<li><b>ปิดเบราว์เซอร์ให้หมดทุกหน้าต่าง</b> แล้วเปิดใหม่ (ไม่ปิดหมด ค่าจะไม่เปลี่ยน) แล้วเข้าเกมอีกครั้ง</li>
 			</ol>
@@ -467,11 +473,18 @@ const engine = new Engine(GODOT_CONFIG);
 				จัดการการตั้งค่า 3D &gt; การตั้งค่าโปรแกรม &gt; เลือกเบราว์เซอร์ &gt;
 				โปรเซสเซอร์กราฟิก = <b>ตัวประมวลผล NVIDIA ประสิทธิภาพสูง</b>
 			</p>
+			<p class="sub" style="margin:8px 0 0; font-size:12px">
+				ที่อยู่ไฟล์เบราว์เซอร์อื่น ถ้าหาไม่เจอ —
+				Edge: <code>C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe</code> ·
+				Chrome: <code>C:\Program Files\Google\Chrome\Application\chrome.exe</code> ·
+				Firefox: <code>C:\Program Files\Mozilla Firefox\firefox.exe</code>
+			</p>
 		</div>
 
 		<p class="note">
 			ทำไมเกมสั่งให้เองไม่ได้: หน้าเว็บขอได้แค่ “ขอการ์ดจอตัวแรง” ซึ่งเกมขอไปให้แล้วทุกครั้ง
-			แต่ Chrome/Edge บน Windows ผูกการ์ดจอไว้ทั้งเบราว์เซอร์ตั้งแต่เปิดโปรแกรม จึงไม่สลับตามคำขอของหน้าเว็บ
+			แต่ Chrome/Edge บน Windows ผูกการ์ดจอไว้ทั้งเบราว์เซอร์ตั้งแต่เปิดโปรแกรม
+			(Opera, Brave และ Chromium ตัวอื่นก็ตัวเดียวกันหมด) จึงไม่สลับตามคำขอของหน้าเว็บ
 			— สวิตช์จริงอยู่ที่ Windows เท่านั้น (Firefox กับ Mac สลับตามคำขอให้เอง)<br>
 			เล่นต่อได้เลยถ้าไม่สะดวกตั้งตอนนี้ แต่ถ้าแลคมาก ลองลดที่ <b>ตั้งค่า &gt; กราฟิก &gt; คุณภาพกราฟิก</b> เป็น “ต่ำ” ช่วยได้อีกทาง
 		</p>
@@ -492,8 +505,56 @@ const engine = new Engine(GODOT_CONFIG);
 	function store(k, v) { try { window.localStorage.setItem(k, v); } catch (e) {} }
 	function load(k) { try { return window.localStorage.getItem(k); } catch (e) { return null; } }
 
+	// v81.43: บอกที่อยู่ไฟล์/หน้าตั้งค่าให้ตรงกับเบราว์เซอร์ที่ผู้เล่นใช้อยู่จริง
+	//   Edge/Opera/Brave เป็น Chromium ตัวเดียวกับ Chrome -> ข้อจำกัดเดียวกัน ต่างแค่ชื่อไฟล์กับ url ตั้งค่า
+	//   Firefox คนละเครื่องยนต์: ไม่มี chrome://flags และสลับการ์ดตามคำขอของหน้าเว็บให้เองอยู่แล้ว
+	function browserInfo() {
+		var ua = navigator.userAgent || "";
+		var brands = (navigator.userAgentData && navigator.userAgentData.brands) || [];
+		function hasBrand(n) {
+			for (var i = 0; i < brands.length; i++) {
+				if (String(brands[i].brand || "").indexOf(n) >= 0) { return true; }
+			}
+			return false;
+		}
+		if (/Edg\//.test(ua) || hasBrand("Microsoft Edge")) {
+			return { name: "Microsoft Edge", scheme: "edge", exe: "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe" };
+		}
+		if (/OPR\//.test(ua) || hasBrand("Opera")) {
+			return { name: "Opera", scheme: "opera", exe: "C:\\Users\\<ชื่อผู้ใช้>\\AppData\\Local\\Programs\\Opera\\opera.exe" };
+		}
+		if (hasBrand("Brave") || navigator.brave) {
+			return { name: "Brave", scheme: "brave", exe: "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe" };
+		}
+		if (/Firefox\//.test(ua)) {
+			return { name: "Firefox", firefox: true, exe: "C:\\Program Files\\Mozilla Firefox\\firefox.exe" };
+		}
+		if (/Chrome\//.test(ua)) {
+			return { name: "Google Chrome", scheme: "chrome", exe: "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" };
+		}
+		// Safari และอื่น ๆ: ไม่มีขั้นตอนฝั่ง Windows ให้ทำ
+		return { name: "เบราว์เซอร์ที่ใช้เล่น", other: true, exe: "" };
+	}
+
+	function fillBrowser() {
+		var b = browserInfo();
+		q("sof-gpu-browser").textContent = b.name;
+		if (b.exe) { q("sof-gpu-exe").textContent = b.exe; }
+		q("sof-gpu-exe").className = b.exe ? "" : "hide";
+		// ขั้นตอนเปิดการเร่งกราฟิก: Firefox ใช้เมนูตั้งค่า ไม่ใช่ url แบบ chrome://
+		q("sof-gpu-sw-chromium").className = b.firefox ? "hide" : "";
+		q("sof-gpu-sw-firefox").className = b.firefox ? "" : "hide";
+		if (b.scheme) {
+			q("sof-gpu-url-settings").textContent = b.scheme + "://settings/system";
+			q("sof-gpu-url-gpu").textContent = b.scheme + "://gpu";
+			q("sof-gpu-url-flags").textContent = b.scheme + "://flags";
+		}
+		return b;
+	}
+
 	function fill() {
 		var g = window.SOF_GPU || { renderer: "", kind: "unknown", stuck: false };
+		var b = fillBrowser();
 		q("sof-gpu-name").textContent = g.renderer || "(เบราว์เซอร์ไม่บอกชื่อ)";
 		var sw = (g.kind === "software");
 		q("sof-gpu-sec-sw").className = sw ? "" : "hide";
@@ -509,7 +570,7 @@ const engine = new Engine(GODOT_CONFIG);
 		} else if (g.kind === "integrated") {
 			q("sof-gpu-title").textContent = "เบราว์เซอร์ใช้การ์ดจอออนบอร์ด";
 			q("sof-gpu-sub").textContent = "ถ้าเครื่องนี้มีการ์ดจอแยก (NVIDIA / AMD / Intel Arc) อยู่ด้วย "
-				+ "Windows จะส่งเบราว์เซอร์ไปใช้ตัวออนบอร์ดเพื่อประหยัดไฟ ต้องตั้งเองหนึ่งครั้ง แล้วจะจำไว้ตลอด";
+				+ "Windows จะส่ง " + b.name + " ไปใช้ตัวออนบอร์ดเพื่อประหยัดไฟ ต้องตั้งเองหนึ่งครั้ง แล้วจะจำไว้ตลอด";
 			q("sof-gpu-verdict").innerHTML = '<span class="bad">= กราฟิกออนบอร์ด</span>'
 				+ (g.stuck ? " — ขอการ์ดตัวแรงไปแล้วแต่เบราว์เซอร์ให้ตัวเดิม" : "");
 		} else {
@@ -541,7 +602,8 @@ const engine = new Engine(GODOT_CONFIG);
 			"ประเภท: " + (g.kind || "?"),
 			"ขอประหยัดไฟได้: " + (g.low_power || "?"),
 			"สลับการ์ดได้: " + (g.switched ? "ได้" : "ไม่ได้"),
-			"เบราว์เซอร์: " + navigator.userAgent,
+			"เบราว์เซอร์: " + browserInfo().name,
+			"UA: " + navigator.userAgent,
 			"หน้าจอ: " + window.screen.width + "x" + window.screen.height + " @" + (window.devicePixelRatio || 1),
 			"คอร์ซีพียู: " + (navigator.hardwareConcurrency || "?")
 		].join("\n");
